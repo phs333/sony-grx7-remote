@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#111318">
+<meta name="theme-color" content="#1c1d1f">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,242 +11,688 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/svg+xml" href="/icon.svg">
 <link rel="apple-touch-icon" href="/icon.svg">
-<title>Sony GRX7 Remote</title>
+<title>SONY RM-GRX7</title>
 <style>
   :root {
-    --bg: #0d0f12;
-    --body-grad: linear-gradient(160deg, #1b1f27 0%, #101217 100%);
-    --btn-bg: linear-gradient(145deg, #262b36, #1a1e26);
-    --btn-active: linear-gradient(145deg, #161920, #232832);
-    --accent: #ff5722;
-    --power: #e53935;
-    --md-color: #00acc1;
-    --bass-color: #ffb300;
-    --text: #eceff4;
-    --subtext: #8f9bb3;
+    --chassis-top: #2a2c30;
+    --chassis-bot: #191a1d;
+    --well-bg: #121315;
+    --key-charcoal: linear-gradient(180deg, #383b40 0%, #26282c 88%, #1e2024 100%);
+    --key-charcoal-pressed: linear-gradient(180deg, #1d1f22 0%, #282a2e 100%);
+    --key-metal: linear-gradient(180deg, #4a4e54 0%, #32353a 85%, #26292d 100%);
+    --key-power: linear-gradient(180deg, #b82828 0%, #8e1818 85%, #6e1010 100%);
+    --key-power-pressed: linear-gradient(180deg, #6e1010 0%, #991b1b 100%);
+    --silk-white: #d8dce2;
+    --silk-dim: #8c929c;
+    --silk-amber: #f28c28;
+    --silk-cyan: #38d9c0;
+    --vfd-cyan: #4effdf;
+    --vfd-orange: #ff5522;
   }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
   body {
-    margin: 0; padding: 12px;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    display: flex; justify-content: center;
+    margin: 0;
+    padding: 10px;
+    background: #0c0d0e;
+    color: var(--silk-white);
+    font-family: 'Helvetica Neue', Arial, -apple-system, BlinkMacSystemFont, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
     min-height: 100vh;
   }
+
+  /* Carcaca fisica estilo controle Sony RM-S anos 90 */
   .remote {
-    width: 100%; max-width: 390px;
-    background: var(--body-grad);
-    border-radius: 32px;
-    padding: 20px 18px 26px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1);
-    border: 1px solid #2a2f3a;
-    display: flex; flex-direction: column; gap: 16px;
+    width: 100%;
+    max-width: 376px;
+    background:
+      radial-gradient(rgba(255,255,255,0.025) 1px, transparent 0) 0 0 / 4px 4px,
+      linear-gradient(175deg, var(--chassis-top) 0%, #212327 45%, var(--chassis-bot) 100%);
+    border-radius: 20px 20px 38px 38px;
+    padding: 18px 16px 24px;
+    box-shadow:
+      0 26px 60px rgba(0,0,0,0.9),
+      inset 0 1px 1px rgba(255,255,255,0.18),
+      inset 0 -3px 6px rgba(0,0,0,0.85),
+      inset 2px 0 3px rgba(255,255,255,0.05),
+      inset -2px 0 3px rgba(0,0,0,0.6);
+    border: 1px solid #111214;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
   }
-  .header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 0 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.07);
+
+  /* Topo com logo SONY, transmissor IR e botao fullscreen discreto */
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 4px 10px;
+    border-bottom: 2px groove rgba(255,255,255,0.06);
   }
-  .brand { font-weight: 800; letter-spacing: 3px; font-size: 1.15rem; color: #fff; }
-  .model { font-size: 0.72rem; color: var(--accent); font-weight: 700; letter-spacing: 1.2px; display: block; margin-top: 2px; }
+
+  .sony-logo {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: 700;
+    font-size: 1.32rem;
+    letter-spacing: 3.5px;
+    color: #e4e7ec;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+    line-height: 1;
+  }
+
+  .model-tag {
+    display: block;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    color: var(--silk-dim);
+    margin-top: 4px;
+  }
+
+  .top-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .btn-fs {
+    background: #181a1d;
+    color: var(--silk-dim);
+    border: 1px solid #33373d;
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.6);
+  }
+  .btn-fs:active {
+    background: #121316;
+    color: var(--silk-white);
+  }
+
+  .ir-window {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #0b0506;
+    border: 1px solid #2c1618;
+    border-radius: 12px;
+    padding: 4px 9px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.9);
+  }
+  .ir-window span {
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    color: #7c686a;
+  }
   .ir-led {
-    width: 12px; height: 12px; border-radius: 50%;
-    background: #331515; border: 1px solid #552222;
-    transition: all 0.08s ease;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #3a0d11;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.8);
+    transition: all 0.05s ease;
   }
   .ir-led.active {
-    background: #ff1744;
-    box-shadow: 0 0 14px #ff1744, 0 0 24px #ff5252;
+    background: #ff1e27;
+    box-shadow: 0 0 10px #ff1e27, 0 0 4px #ff8a80;
   }
-  .section-label {
-    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1.5px;
-    color: var(--subtext); margin: 2px 4px -8px; font-weight: 600;
+
+  /* Visor VFD (Vacuum Fluorescent Display) inspirado no painel do MHC-GRX7 */
+  .vfd-bezel {
+    background: #060809;
+    border-radius: 6px;
+    padding: 10px 12px;
+    border: 2px solid #141619;
+    box-shadow:
+      inset 0 3px 8px rgba(0,0,0,0.95),
+      0 1px 0 rgba(255,255,255,0.08);
+    position: relative;
+    overflow: hidden;
   }
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-  button {
-    background: var(--btn-bg);
-    color: var(--text);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 18px;
-    padding: 16px 10px;
-    font-size: 0.92rem; font-weight: 700;
-    box-shadow: 4px 6px 14px rgba(0,0,0,0.45), -2px -2px 8px rgba(255,255,255,0.03);
+  .vfd-bezel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.32) 50%),
+      linear-gradient(90deg, rgba(255,0,0,0.02), rgba(0,255,0,0.01), rgba(0,0,255,0.02));
+    background-size: 100% 3px, 4px 100%;
+    pointer-events: none;
+  }
+  .vfd-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+  }
+  .vfd-badge {
+    padding: 1px 5px;
+    border-radius: 2px;
+    border: 1px solid rgba(78, 255, 223, 0.25);
+    color: rgba(78, 255, 223, 0.65);
+  }
+  .vfd-badge.orange {
+    border-color: rgba(255, 85, 34, 0.4);
+    color: var(--vfd-orange);
+    text-shadow: 0 0 6px rgba(255, 85, 34, 0.45);
+  }
+  .vfd-main {
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 0.86rem;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    color: var(--vfd-cyan);
+    text-shadow: 0 0 8px rgba(78, 255, 223, 0.55);
+    text-transform: uppercase;
+    min-height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .vfd-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 14px;
+  }
+  .vfd-bars i {
+    display: block;
+    width: 3px;
+    background: var(--vfd-cyan);
+    box-shadow: 0 0 4px rgba(78, 255, 223, 0.5);
+    opacity: 0.75;
+    transition: height 0.12s ease;
+  }
+  .vfd-bars i:nth-child(1) { height: 5px; }
+  .vfd-bars i:nth-child(2) { height: 11px; }
+  .vfd-bars i:nth-child(3) { height: 8px; }
+  .vfd-bars i:nth-child(4) { height: 14px; background: var(--vfd-orange); }
+  .vfd-bars i:nth-child(5) { height: 6px; }
+  .vfd-bars.pulse i:nth-child(1) { height: 13px; }
+  .vfd-bars.pulse i:nth-child(2) { height: 6px; }
+  .vfd-bars.pulse i:nth-child(3) { height: 14px; background: var(--vfd-orange); }
+  .vfd-bars.pulse i:nth-child(4) { height: 7px; }
+  .vfd-bars.pulse i:nth-child(5) { height: 12px; }
+
+  /* Divisoria com serigrafia tecnica */
+  .bay {
+    background: var(--well-bg);
+    border-radius: 8px;
+    padding: 10px 10px 11px;
+    border: 1px solid rgba(255,255,255,0.04);
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.85);
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .bay-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bay-title {
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--silk-dim);
+    white-space: nowrap;
+  }
+  .bay-line {
+    height: 1px;
+    width: 100%;
+    background: rgba(255,255,255,0.08);
+  }
+
+  /* Botoes fisicos moldados em borracha/ABS */
+  .hw-btn {
+    position: relative;
+    background: var(--key-charcoal);
+    color: var(--silk-white);
+    border: 1px solid #101113;
+    border-radius: 5px;
+    padding: 12px 8px 11px;
     cursor: pointer;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
-    transition: transform 0.06s ease, box-shadow 0.06s ease;
+    box-shadow:
+      0 3px 0 #0b0c0e,
+      0 4px 6px rgba(0,0,0,0.75),
+      inset 0 1px 0 rgba(255,255,255,0.16),
+      inset 0 -1px 0 rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    transition: transform 0.04s ease, box-shadow 0.04s ease;
     touch-action: manipulation;
   }
-  button:active, button.pressed {
-    background: var(--btn-active);
-    transform: scale(0.96);
-    box-shadow: inset 2px 3px 8px rgba(0,0,0,0.7);
+
+  .hw-btn:active,
+  .hw-btn.pressed {
+    background: var(--key-charcoal-pressed);
+    transform: translateY(2px);
+    box-shadow:
+      0 1px 0 #0b0c0e,
+      0 1px 2px rgba(0,0,0,0.6),
+      inset 0 1px 3px rgba(0,0,0,0.8);
   }
-  button .sub { font-size: 0.65rem; font-weight: 500; color: var(--subtext); }
-  .btn-power {
-    background: linear-gradient(145deg, #d32f2f, #9a0007);
-    border-color: rgba(255,120,120,0.25);
-    color: #fff;
-  }
-  .btn-md {
-    background: linear-gradient(145deg, #00838f, #005662);
-    border-color: rgba(0,229,255,0.25);
-  }
-  .btn-vol {
-    padding: 24px 12px;
-    font-size: 1.35rem;
-    border-radius: 22px;
-    border-color: rgba(255,255,255,0.12);
-  }
-  .btn-groove {
-    background: linear-gradient(145deg, #ff6f00, #c43e00);
-    border-color: rgba(255,193,7,0.35);
-    color: #fff;
-  }
-  .btn-dbfb {
-    border-color: rgba(255,179,0,0.35);
-    color: #ffd54f;
-  }
-  .status-bar {
-    background: #090b0e;
-    border: 1px solid #222834;
-    border-radius: 12px;
-    padding: 10px 12px;
-    font-family: monospace;
+
+  .hw-btn .key-main {
     font-size: 0.78rem;
-    color: #4fc3f7;
-    text-align: center;
-    min-height: 36px;
-    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+    line-height: 1.1;
   }
+
+  .hw-btn .key-sub {
+    font-size: 0.54rem;
+    font-weight: 600;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    color: var(--silk-dim);
+  }
+
+  /* Indicador luminoso embutido na tecla */
+  .key-pip {
+    width: 14px;
+    height: 2px;
+    border-radius: 1px;
+    background: rgba(255,255,255,0.14);
+    margin-bottom: 3px;
+  }
+  .key-pip.amber {
+    background: var(--silk-amber);
+    box-shadow: 0 0 5px rgba(242, 140, 40, 0.55);
+  }
+  .key-pip.cyan {
+    background: var(--silk-cyan);
+    box-shadow: 0 0 5px rgba(56, 217, 192, 0.55);
+  }
+
+  /* Linha superior: Power (I/O) isolado + Seletores de Entrada */
+  .power-source-row {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .power-well {
+    background: #16171a;
+    border: 1px solid #2b2e33;
+    border-radius: 8px;
+    padding: 7px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
+  }
+  .power-label {
+    font-size: 0.52rem;
+    font-weight: 700;
+    letter-spacing: 1.3px;
+    color: #98a0aa;
+    margin-bottom: 5px;
+  }
+  .btn-power {
+    width: 100%;
+    height: 44px;
+    border-radius: 22px;
+    background: var(--key-power);
+    box-shadow:
+      0 3px 0 #3a0808,
+      0 4px 7px rgba(0,0,0,0.8),
+      inset 0 1px 0 rgba(255,190,190,0.32);
+    border: 1px solid #4a0a0a;
+    flex-direction: row;
+    gap: 5px;
+    padding: 0 10px;
+  }
+  .btn-power:active {
+    background: var(--key-power-pressed);
+    box-shadow:
+      0 1px 0 #3a0808,
+      inset 0 2px 4px rgba(0,0,0,0.75);
+  }
+  .btn-power svg {
+    width: 13px;
+    height: 13px;
+    stroke: #fff;
+    stroke-width: 2.2;
+    fill: none;
+  }
+  .btn-power .key-main {
+    font-size: 0.72rem;
+    color: #fff;
+    letter-spacing: 1.2px;
+  }
+
+  /* Teclas de entrada (MD / Function / Video) */
+  .source-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .btn-md-direct {
+    grid-column: span 2;
+    background: var(--key-metal);
+    border-color: #141619;
+    padding: 10px 8px;
+  }
+  .btn-md-direct .key-main {
+    color: #ffffff;
+    font-size: 0.82rem;
+    letter-spacing: 1.4px;
+  }
+
+  /* Graves & Processamento de Som (GROOVE / DBFB) */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  .btn-sound-pro {
+    background: var(--key-metal);
+    padding: 13px 8px 11px;
+    border-top: 1px solid rgba(255,255,255,0.12);
+  }
+  .btn-sound-pro .key-main {
+    color: var(--silk-amber);
+    font-size: 0.84rem;
+    letter-spacing: 1.5px;
+  }
+
+  /* Teclas cilindricas estilo pilula (Display / Muting) */
+  .pill-btn {
+    border-radius: 16px;
+    padding: 9px 10px;
+    background: linear-gradient(180deg, #32353a 0%, #202226 100%);
+  }
+  .pill-btn .key-main {
+    font-size: 0.7rem;
+    letter-spacing: 1.3px;
+  }
+
+  /* Rocker de Volume Fisico com ponto tatil no VOL + */
+  .vol-section {
+    display: grid;
+    grid-template-columns: 1fr 1.35fr;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .util-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .vol-rocker-well {
+    background: #0d0e10;
+    border: 1px solid #2b2e34;
+    border-radius: 10px;
+    padding: 6px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    box-shadow: inset 0 3px 6px rgba(0,0,0,0.95);
+    position: relative;
+  }
+
+  .btn-vol {
+    height: 76px;
+    background: var(--key-metal);
+    border-radius: 6px;
+    justify-content: space-between;
+    padding: 10px 6px 9px;
+  }
+  .btn-vol .vol-sym {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+  }
+  .btn-vol .key-main {
+    font-size: 0.66rem;
+    letter-spacing: 1.3px;
+    color: var(--silk-white);
+  }
+  /* Ponto tatil em relevo classico dos controles Sony no botao VOL + */
+  .tactile-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #b8bec6;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.9), inset 0 1px 0 #fff;
+  }
+  .tactile-spacer {
+    width: 5px;
+    height: 5px;
+  }
+
+  /* Gaveta tecnica de laboratorio SIRC */
   details {
-    background: rgba(0,0,0,0.25);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 14px;
-    padding: 10px 12px;
-    font-size: 0.8rem;
+    background: #131417;
+    border: 1px solid #26292e;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.72rem;
   }
-  summary { cursor: pointer; color: var(--subtext); font-weight: 600; outline: none; }
-  .lab-row { display: flex; gap: 6px; margin-top: 10px; align-items: center; }
+  summary {
+    cursor: pointer;
+    color: var(--silk-dim);
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    font-size: 0.6rem;
+    outline: none;
+  }
+  .lab-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    align-items: center;
+  }
   input, select {
-    background: #12151c; color: #fff; border: 1px solid #323949;
-    border-radius: 8px; padding: 8px; font-size: 0.82rem; width: 100%;
+    background: #0b0c0e;
+    color: var(--vfd-cyan);
+    border: 1px solid #2b2f36;
+    border-radius: 4px;
+    padding: 7px 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.76rem;
+    font-weight: 700;
+    width: 100%;
   }
-  .btn-sm { padding: 9px 12px; font-size: 0.78rem; border-radius: 10px; flex-shrink: 0; }
-  .header-right { display: flex; align-items: center; gap: 10px; }
-  .btn-fs {
-    padding: 6px 10px; font-size: 0.72rem; border-radius: 10px;
-    background: #1d222c; border: 1px solid #323949; color: var(--subtext);
-    box-shadow: none; flex-direction: row; gap: 4px;
+  .btn-lab {
+    padding: 8px 11px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    flex-shrink: 0;
   }
 </style>
 </head>
 <body>
   <div class="remote">
-    <div class="header">
+    <!-- Topo da carcaca -->
+    <div class="top-bar">
       <div>
-        <div class="brand">SONY</div>
-        <span class="model">MHC-GRX7 CONTROLLER</span>
+        <div class="sony-logo">SONY</div>
+        <span class="model-tag">AUDIO SYSTEM RM-GRX7</span>
       </div>
-      <div class="header-right">
-        <button class="btn-fs" onclick="toggleFullscreen()" title="Tela Cheia">&#x26F6; Tela Cheia</button>
-        <div id="led" class="ir-led" title="Indicador IR"></div>
+      <div class="top-controls">
+        <button class="btn-fs" onclick="toggleFullscreen()" title="Alternar Tela Cheia">FULLSCREEN</button>
+        <div class="ir-window" title="Transmissor Infravermelho 40kHz">
+          <span>SIRC</span>
+          <div id="led" class="ir-led"></div>
+        </div>
       </div>
     </div>
 
-    <div id="status" class="status-bar">PRONTO (MD / TV CHROMECAST)</div>
-
-    <div class="section-label">Energia &amp; Entrada</div>
-    <div class="grid-2">
-      <button class="btn-power" onclick="sendKey('power', 'POWER (0xA81)')">
-        <span>&#x23FB; POWER</span>
-        <span class="sub" style="color:#ffcdd2">Liga / Desliga</span>
-      </button>
-      <button class="btn-md" onclick="sendKey('md', 'ENTRADA MD (0x621)')">
-        <span>&#x1F4BF; MD / VIDEO</span>
-        <span class="sub" style="color:#b2ebf2">Entrada Direta</span>
-      </button>
-    </div>
-    <div class="grid-2">
-      <button onclick="sendKey('function', 'FUNCTION (0x4B09)')">
-        <span>&#x1F501; FUNCTION</span>
-        <span class="sub">Alternar Entrada</span>
-      </button>
-      <button onclick="sendKey('video_aux', 'VIDEO/AUX (0x441)')">
-        <span>&#x1F4FA; VIDEO / AUX</span>
-        <span class="sub">Alternativo 12-bit</span>
-      </button>
+    <!-- Visor VFD Fluorescente -->
+    <div class="vfd-bezel">
+      <div class="vfd-top">
+        <span class="vfd-badge">MHC-GRX7</span>
+        <span class="vfd-badge orange">DBFB / GROOVE</span>
+        <span class="vfd-badge">40kHz IR</span>
+      </div>
+      <div class="vfd-main">
+        <span id="status">READY // MD-VIDEO</span>
+        <div id="vfdBars" class="vfd-bars">
+          <i></i><i></i><i></i><i></i><i></i>
+        </div>
+      </div>
     </div>
 
-    <div class="section-label">Controle de Volume (Segure para repetir)</div>
-    <div class="grid-2">
-      <button class="btn-vol" id="btnVolDown">
-        <span>VOL &minus;</span>
-        <span class="sub">Diminuir</span>
-      </button>
-      <button class="btn-vol" id="btnVolUp">
-        <span>VOL +</span>
-        <span class="sub">Aumentar</span>
-      </button>
-    </div>
-    <div class="grid-2">
-      <button onclick="sendKey('mute', 'MUTE (0x281)')" style="padding:12px">
-        <span>&#x1F507; MUTE</span>
-        <span class="sub">Silenciar</span>
-      </button>
-      <button onclick="sendKey('display', 'DISPLAY (0xD21)')" style="padding:12px">
-        <span>&#x1F4DF; DISPLAY</span>
-        <span class="sub">Visor / Demo Off</span>
-      </button>
+    <!-- Linha Power (I/O) + Seletores de Fonte -->
+    <div class="power-source-row">
+      <div class="power-well">
+        <span class="power-label">I/O STANDBY</span>
+        <button class="hw-btn btn-power" onclick="sendKey('power', 'POWER I/O (0xA81)')">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2v10" stroke-linecap="round"/>
+            <path d="M18.4 6.6a9 9 0 1 1-12.8 0" stroke-linecap="round"/>
+          </svg>
+          <span class="key-main">POWER</span>
+        </button>
+      </div>
+
+      <div class="source-grid">
+        <button class="hw-btn btn-md-direct" onclick="sendKey('md', 'MD / VIDEO (0x621)')">
+          <span class="key-pip cyan"></span>
+          <span class="key-main">MD / VIDEO</span>
+          <span class="key-sub">Direct TV Input</span>
+        </button>
+        <button class="hw-btn" onclick="sendKey('function', 'FUNCTION (0x4B09)')">
+          <span class="key-main">FUNCTION</span>
+          <span class="key-sub">Source Loop</span>
+        </button>
+        <button class="hw-btn" onclick="sendKey('video_aux', 'VIDEO / AUX (0x441)')">
+          <span class="key-main">VIDEO</span>
+          <span class="key-sub">Aux 12-Bit</span>
+        </button>
+      </div>
     </div>
 
-    <div class="section-label">Graves &amp; Equalizador GRX7</div>
-    <div class="grid-2">
-      <button class="btn-groove" onclick="sendKey('groove', 'GROOVE (0x1309)')">
-        <span>&#x1F525; GROOVE</span>
-        <span class="sub" style="color:#ffe0b2">Reforco Total</span>
-      </button>
-      <button class="btn-dbfb" onclick="sendKey('dbfb', 'DBFB BASS (0x2309)')">
-        <span>&#x1F4A5; DBFB</span>
-        <span class="sub">Dynamic Bass</span>
-      </button>
-    </div>
-    <div class="grid-3">
-      <button onclick="sendKey('eq', 'EQ / EFFECT (0x6309)')">
-        <span>&#x1F39B; EQ</span>
-        <span class="sub">Preset</span>
-      </button>
-      <button onclick="sendKey('effect', 'EFFECT (0xF81)')">
-        <span>&#x2728; EFFECT</span>
-        <span class="sub">On / Off</span>
-      </button>
-      <button onclick="sendKey('surround', 'SURROUND (0xD41)')">
-        <span>&#x1F50A; SURR</span>
-        <span class="sub">Modo</span>
-      </button>
+    <!-- Processador Acustico Sony GRX7 -->
+    <div class="bay">
+      <div class="bay-header">
+        <span class="bay-title">Sound Reinforcement &amp; DSP</span>
+        <div class="bay-line"></div>
+      </div>
+      <div class="grid-2">
+        <button class="hw-btn btn-sound-pro" onclick="sendKey('groove', 'GROOVE (0x1309)')">
+          <span class="key-pip amber"></span>
+          <span class="key-main">GROOVE</span>
+          <span class="key-sub">Power Bass Mode</span>
+        </button>
+        <button class="hw-btn btn-sound-pro" onclick="sendKey('dbfb', 'DBFB (0x2309)')">
+          <span class="key-pip amber"></span>
+          <span class="key-main">DBFB</span>
+          <span class="key-sub">Dynamic Bass</span>
+        </button>
+      </div>
+      <div class="grid-3">
+        <button class="hw-btn" onclick="sendKey('eq', 'EQ PRESET (0x6309)')">
+          <span class="key-main">EQ</span>
+          <span class="key-sub">Preset</span>
+        </button>
+        <button class="hw-btn" onclick="sendKey('effect', 'EFFECT (0xF81)')">
+          <span class="key-main">EFFECT</span>
+          <span class="key-sub">On / Off</span>
+        </button>
+        <button class="hw-btn" onclick="sendKey('surround', 'SURROUND (0xD41)')">
+          <span class="key-main">SURROUND</span>
+          <span class="key-sub">Field</span>
+        </button>
+      </div>
     </div>
 
+    <!-- Controle de Volume (Rocker Tatil) + Display / Muting -->
+    <div class="bay">
+      <div class="bay-header">
+        <span class="bay-title">Master Volume &amp; Display</span>
+        <div class="bay-line"></div>
+      </div>
+      <div class="vol-section">
+        <div class="util-col">
+          <button class="hw-btn pill-btn" onclick="sendKey('display', 'DISPLAY (0xD21)')">
+            <span class="key-main">DISPLAY</span>
+            <span class="key-sub">Demo / VFD</span>
+          </button>
+          <button class="hw-btn pill-btn" onclick="sendKey('mute', 'MUTING (0x281)')">
+            <span class="key-main">MUTING</span>
+            <span class="key-sub">Attenuate</span>
+          </button>
+        </div>
+
+        <div class="vol-rocker-well">
+          <button class="hw-btn btn-vol" id="btnVolDown">
+            <span class="tactile-spacer"></span>
+            <span class="vol-sym">&minus;</span>
+            <span class="key-main">VOL &minus;</span>
+          </button>
+          <button class="hw-btn btn-vol" id="btnVolUp">
+            <span class="tactile-dot" title="Ponto tatil de referencia"></span>
+            <span class="vol-sym">+</span>
+            <span class="key-main">VOL +</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scanner Tecnico Sony SIRC -->
     <details>
-      <summary>&#x1F50D; Testador / Scanner de Codigos Sony</summary>
+      <summary>SIRC Code Transmitter / Scanner</summary>
       <div class="lab-row">
-        <input id="hexInput" type="text" value="0xA81" placeholder="Hex (ex: 0xA81)">
-        <select id="bitsInput" style="width:95px">
-          <option value="12" selected>12 bits</option>
-          <option value="15">15 bits</option>
-          <option value="20">20 bits</option>
+        <input id="hexInput" type="text" value="0xA81" placeholder="Hex (0xA81)">
+        <select id="bitsInput" style="width:92px">
+          <option value="12" selected>12-BIT</option>
+          <option value="15">15-BIT</option>
+          <option value="20">20-BIT</option>
         </select>
-        <button class="btn-sm" onclick="sendRawHex()">Enviar</button>
+        <button class="hw-btn btn-lab" onclick="sendRawHex()">SEND</button>
       </div>
       <div class="lab-row">
-        <input id="cmdNum" type="number" min="0" max="127" value="21" placeholder="Cmd (0-127)">
-        <select id="addrNum" style="width:120px">
-          <option value="16" selected>Addr 16 (12b)</option>
-          <option value="144">Addr 144 (15b)</option>
-          <option value="80">Addr 80 (15b)</option>
+        <input id="cmdNum" type="number" min="0" max="127" value="21" placeholder="Cmd">
+        <select id="addrNum" style="width:125px">
+          <option value="16" selected>ADDR 0x10 (12b)</option>
+          <option value="144">ADDR 0x90 (15b)</option>
+          <option value="80">ADDR 0x50 (15b)</option>
         </select>
-        <button class="btn-sm" onclick="stepCmd(-1)">&minus;</button>
-        <button class="btn-sm" onclick="stepCmd(0)">Testar</button>
-        <button class="btn-sm" onclick="stepCmd(1)">+</button>
+        <button class="hw-btn btn-lab" onclick="stepCmd(-1)">&minus;</button>
+        <button class="hw-btn btn-lab" onclick="stepCmd(0)">TEST</button>
+        <button class="hw-btn btn-lab" onclick="stepCmd(1)">+</button>
       </div>
     </details>
   </div>
@@ -254,29 +700,34 @@
 <script>
   const led = document.getElementById('led');
   const status = document.getElementById('status');
+  const vfdBars = document.getElementById('vfdBars');
 
   function pulseFeedback(msg) {
-    if (navigator.vibrate) navigator.vibrate(30);
+    if (navigator.vibrate) navigator.vibrate(25);
     led.classList.add('active');
+    vfdBars.classList.add('pulse');
     status.textContent = msg;
-    setTimeout(() => led.classList.remove('active'), 180);
+    setTimeout(() => {
+      led.classList.remove('active');
+      vfdBars.classList.remove('pulse');
+    }, 180);
   }
 
   async function sendKey(key, label) {
-    pulseFeedback('ENVIANDO: ' + label);
+    pulseFeedback('TX: ' + label);
     try {
       const r = await fetch('/api/cmd?key=' + encodeURIComponent(key), { method: 'POST' });
       const txt = await r.text();
-      status.textContent = 'OK: ' + txt;
+      status.textContent = 'OK // ' + txt;
     } catch (e) {
-      status.textContent = 'ERRO DE CONEXAO';
+      status.textContent = 'ERR // NO LINK';
     }
   }
 
   async function sendRawHex() {
     const hex = document.getElementById('hexInput').value.trim();
     const bits = document.getElementById('bitsInput').value;
-    pulseFeedback('RAW ' + hex + ' (' + bits + 'b)');
+    pulseFeedback('RAW ' + hex + ' [' + bits + 'B]');
     const r = await fetch(`/api/raw?data=${encodeURIComponent(hex)}&bits=${bits}`, { method: 'POST' });
     status.textContent = await r.text();
   }
@@ -287,7 +738,7 @@
     el.value = cmd;
     const addr = parseInt(document.getElementById('addrNum').value, 10);
     const bits = (addr > 31) ? 15 : 12;
-    pulseFeedback(`SCAN CMD=${cmd} ADDR=${addr}`);
+    pulseFeedback(`CMD=${cmd} ADDR=${addr}`);
     const r = await fetch(`/api/sirc?cmd=${cmd}&addr=${addr}&bits=${bits}`, { method: 'POST' });
     status.textContent = await r.text();
   }
@@ -299,7 +750,7 @@
       e.preventDefault();
       btn.classList.add('pressed');
       sendKey(key, label);
-      timer = setInterval(() => sendKey(key, label), 260);
+      timer = setInterval(() => sendKey(key, label), 250);
     };
     const stop = () => {
       btn.classList.remove('pressed');
@@ -313,8 +764,8 @@
     btn.addEventListener('mouseleave', stop);
   }
 
-  setupHoldButton('btnVolUp', 'vol_up', 'VOLUME + (0x481)');
-  setupHoldButton('btnVolDown', 'vol_down', 'VOLUME - (0xC81)');
+  setupHoldButton('btnVolUp', 'vol_up', 'VOL + (0x481)');
+  setupHoldButton('btnVolDown', 'vol_down', 'VOL - (0xC81)');
 
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
