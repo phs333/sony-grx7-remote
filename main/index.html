@@ -4,8 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#111318">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sony GRX7">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="apple-touch-icon" href="/icon.svg">
 <title>Sony GRX7 Remote</title>
 <style>
   :root {
@@ -128,6 +133,12 @@
     border-radius: 8px; padding: 8px; font-size: 0.82rem; width: 100%;
   }
   .btn-sm { padding: 9px 12px; font-size: 0.78rem; border-radius: 10px; flex-shrink: 0; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .btn-fs {
+    padding: 6px 10px; font-size: 0.72rem; border-radius: 10px;
+    background: #1d222c; border: 1px solid #323949; color: var(--subtext);
+    box-shadow: none; flex-direction: row; gap: 4px;
+  }
 </style>
 </head>
 <body>
@@ -137,7 +148,10 @@
         <div class="brand">SONY</div>
         <span class="model">MHC-GRX7 CONTROLLER</span>
       </div>
-      <div id="led" class="ir-led" title="Indicador IR"></div>
+      <div class="header-right">
+        <button class="btn-fs" onclick="toggleFullscreen()" title="Tela Cheia">&#x26F6; Tela Cheia</button>
+        <div id="led" class="ir-led" title="Indicador IR"></div>
+      </div>
     </div>
 
     <div id="status" class="status-bar">PRONTO (MD / TV CHROMECAST)</div>
@@ -301,6 +315,18 @@
 
   setupHoldButton('btnVolUp', 'vol_up', 'VOLUME + (0x481)');
   setupHoldButton('btnVolDown', 'vol_down', 'VOLUME - (0xC81)');
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
 </script>
 </body>
 </html>

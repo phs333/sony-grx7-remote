@@ -194,12 +194,74 @@ extern const char index_html_start[] asm("_binary_index_html_start");
 extern const char index_html_end[]   asm("_binary_index_html_end");
 
 /* =========================================================================
- * HANDLERS DO SERVIDOR HTTP
+ * HANDLERS DO SERVIDOR HTTP + PWA (MANIFEST, ICONE SVG, SERVICE WORKER)
  * ========================================================================= */
+static const char MANIFEST_JSON[] =
+"{\n"
+"  \"name\": \"Sony MHC-GRX7 Remote\",\n"
+"  \"short_name\": \"Sony GRX7\",\n"
+"  \"description\": \"Controle Remoto IR Wi-Fi Sony MHC-GRX7\",\n"
+"  \"start_url\": \"/\",\n"
+"  \"scope\": \"/\",\n"
+"  \"display\": \"standalone\",\n"
+"  \"display_override\": [\"fullscreen\", \"standalone\"],\n"
+"  \"orientation\": \"portrait\",\n"
+"  \"background_color\": \"#0d0f12\",\n"
+"  \"theme_color\": \"#111318\",\n"
+"  \"icons\": [\n"
+"    {\n"
+"      \"src\": \"/icon.svg\",\n"
+"      \"sizes\": \"any\",\n"
+"      \"type\": \"image/svg+xml\",\n"
+"      \"purpose\": \"any maskable\"\n"
+"    },\n"
+"    {\n"
+"      \"src\": \"/icon.svg\",\n"
+"      \"sizes\": \"192x192 512x512\",\n"
+"      \"type\": \"image/svg+xml\"\n"
+"    }\n"
+"  ]\n"
+"}";
+
+static const char ICON_SVG[] =
+"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 192 192\">"
+"<rect width=\"192\" height=\"192\" rx=\"42\" fill=\"#141820\"/>"
+"<rect x=\"48\" y=\"20\" width=\"96\" height=\"152\" rx=\"22\" fill=\"#232834\" stroke=\"#ff5722\" stroke-width=\"4\"/>"
+"<circle cx=\"74\" cy=\"48\" r=\"10\" fill=\"#e53935\"/>"
+"<circle cx=\"118\" cy=\"48\" r=\"10\" fill=\"#00acc1\"/>"
+"<rect x=\"64\" y=\"74\" width=\"64\" height=\"24\" rx=\"8\" fill=\"#ff6f00\"/>"
+"<circle cx=\"76\" cy=\"124\" r=\"11\" fill=\"#323949\"/>"
+"<circle cx=\"116\" cy=\"124\" r=\"11\" fill=\"#323949\"/>"
+"<text x=\"96\" y=\"160\" text-anchor=\"middle\" fill=\"#eceff4\" font-family=\"sans-serif\" font-weight=\"bold\" font-size=\"15\">SONY</text>"
+"</svg>";
+
+static const char SW_JS[] =
+"self.addEventListener('install', () => self.skipWaiting());\n"
+"self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));\n"
+"self.addEventListener('fetch', () => {});\n";
+
 static esp_err_t index_get_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "text/html; charset=utf-8");
     return httpd_resp_send(req, index_html_start, HTTPD_RESP_USE_STRLEN);
+}
+
+static esp_err_t manifest_get_handler(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, "application/manifest+json; charset=utf-8");
+    return httpd_resp_send(req, MANIFEST_JSON, HTTPD_RESP_USE_STRLEN);
+}
+
+static esp_err_t icon_get_handler(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, "image/svg+xml");
+    return httpd_resp_send(req, ICON_SVG, HTTPD_RESP_USE_STRLEN);
+}
+
+static esp_err_t sw_get_handler(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, "application/javascript; charset=utf-8");
+    return httpd_resp_send(req, SW_JS, HTTPD_RESP_USE_STRLEN);
 }
 
 typedef struct {
@@ -301,7 +363,7 @@ static void start_webserver(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.lru_purge_enable = true;
-    config.max_uri_handlers = 8;
+    config.max_uri_handlers = 10;
 
     httpd_handle_t server = NULL;
     if (httpd_start(&server, &config) == ESP_OK) {
@@ -309,6 +371,24 @@ static void start_webserver(void)
             .uri       = "/",
             .method    = HTTP_GET,
             .handler   = index_get_handler,
+            .user_ctx  = NULL
+        };
+        const httpd_uri_t manifest_uri = {
+            .uri       = "/manifest.json",
+            .method    = HTTP_GET,
+            .handler   = manifest_get_handler,
+            .user_ctx  = NULL
+        };
+        const httpd_uri_t icon_uri = {
+            .uri       = "/icon.svg",
+            .method    = HTTP_GET,
+            .handler   = icon_get_handler,
+            .user_ctx  = NULL
+        };
+        const httpd_uri_t sw_uri = {
+            .uri       = "/sw.js",
+            .method    = HTTP_GET,
+            .handler   = sw_get_handler,
             .user_ctx  = NULL
         };
         const httpd_uri_t cmd_uri = {
@@ -331,6 +411,9 @@ static void start_webserver(void)
         };
 
         httpd_register_uri_handler(server, &index_uri);
+        httpd_register_uri_handler(server, &manifest_uri);
+        httpd_register_uri_handler(server, &icon_uri);
+        httpd_register_uri_handler(server, &sw_uri);
         httpd_register_uri_handler(server, &cmd_uri);
         httpd_register_uri_handler(server, &raw_uri);
         httpd_register_uri_handler(server, &sirc_uri);
