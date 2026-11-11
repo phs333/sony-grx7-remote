@@ -1,0 +1,34 @@
+menu "Sony GRX7 Remote Configuration"
+
+    config SONY_WIFI_SSID_1
+        string "WiFi SSID 1 (Principal)"
+        default "SEU_WIFI_PRINCIPAL"
+        help
+            Nome da primeira rede Wi-Fi (2.4 GHz) para o ESP32 conectar.
+
+    config SONY_WIFI_PASSWORD_1
+        string "WiFi Password 1"
+        default "SUA_SENHA_1"
+        help
+            Senha da primeira rede Wi-Fi.
+
+    config SONY_WIFI_SSID_2
+        string "WiFi SSID 2 (Secundario / Fallback)"
+        default "SEU_WIFI_SECUNDARIO"
+        help
+            Nome da segunda rede Wi-Fi (2.4 GHz) caso a primeira falhe.
+
+    config SONY_WIFI_PASSWORD_2
+        string "WiFi Password 2"
+        default "SUA_SENHA_2"
+        help
+            Senha da segunda rede Wi-Fi.
+
+    config SONY_IR_GPIO
+        int "IR Transmitter GPIO Pin"
+        range 0 39
+        default 13
+        help
+            Pino GPIO onde o LED IR (TIL32) ou transistor driver esta conectado.
+
+endmenu

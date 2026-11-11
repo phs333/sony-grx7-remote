@@ -1,0 +1,19 @@
+# ESP-IDF Build & Config Artifacts
+build/
+sdkconfig
+sdkconfig.old
+managed_components/
+dependencies.lock
+
+# Local Wi-Fi Credentials (NUNCA versionar senhas reais no GitHub publico)
+main/wifi_secrets.h
+
+# IDE & Local Environment Cache
+.cache/
+.vscode/
+.clangd
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
