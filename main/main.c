@@ -69,7 +69,7 @@ static const char *TAG = "SONY_GRX7";
 #define SONY_BIT_ZERO_MARK_US   600
 #define SONY_BIT_SPACE_US       600
 #define SONY_INTERFRAME_SPACE_US 24000  // Espaco exato de 24 ms entre frames no hardware RMT (periodo Sony ~45 ms)
-#define SONY_REPEAT_FRAMES      5       // 5 frames (~225 ms) para resposta firme no som e visibilidade nitida na camera
+#define SONY_REPEAT_FRAMES      3       // Padrao oficial Sony SIRC: 3 frames por comando (~135 ms)
 #define SONY_TX_TIMEOUT_MS      200     // Timeout em MILISSEGUNDOS para rmt_tx_wait_all_done()
 
 static rmt_channel_handle_t s_rmt_tx_chan = NULL;
