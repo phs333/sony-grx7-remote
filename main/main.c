@@ -10,6 +10,7 @@
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "esp_http_server.h"
+#include "driver/gpio.h" // IWYU pragma: keep
 #include "driver/rmt_tx.h"
 
 static const char *TAG = "SONY_GRX7";
@@ -67,8 +68,9 @@ static const char *TAG = "SONY_GRX7";
 #define SONY_BIT_ONE_MARK_US    1200
 #define SONY_BIT_ZERO_MARK_US   600
 #define SONY_BIT_SPACE_US       600
-#define SONY_REPEAT_FRAMES      3       // Sony exige minimo de 3 frames por comando
-#define SONY_INTERFRAME_GAP_MS  25
+#define SONY_INTERFRAME_SPACE_US 24000  // Espaco exato de 24 ms entre frames no hardware RMT (periodo Sony ~45 ms)
+#define SONY_REPEAT_FRAMES      5       // 5 frames (~225 ms) para resposta firme no som e visibilidade nitida na camera
+#define SONY_TX_TIMEOUT_MS      200     // Timeout em MILISSEGUNDOS para rmt_tx_wait_all_done()
 
 static rmt_channel_handle_t s_rmt_tx_chan = NULL;
 static rmt_encoder_handle_t s_rmt_copy_encoder = NULL;
@@ -88,6 +90,11 @@ static void ir_rmt_init(void)
 {
     ESP_LOGI(TAG, "Configurando RMT TX no GPIO %d (Portadora 40kHz Sony SIRC)...", IR_TX_GPIO_NUM);
 
+    // Garante que o GPIO 13 (RTC_GPIO14 / MTCK) saia do modo RTC/JTAG e sem pull-up antes do RMT assumir a matriz
+    gpio_reset_pin(IR_TX_GPIO_NUM);
+    gpio_pullup_dis(IR_TX_GPIO_NUM);
+    gpio_pulldown_dis(IR_TX_GPIO_NUM);
+
     rmt_tx_channel_config_t tx_chan_cfg = {
         .clk_src = RMT_CLK_SRC_DEFAULT,
         .gpio_num = IR_TX_GPIO_NUM,
@@ -101,8 +108,11 @@ static void ir_rmt_init(void)
     };
     ESP_ERROR_CHECK(rmt_new_tx_channel(&tx_chan_cfg, &s_rmt_tx_chan));
 
+    // Configura corrente maxima de saida no pad do ESP32 (GPIO_DRIVE_CAP_3 = ~40mA) para o LED TIL32
+    ESP_ERROR_CHECK(gpio_set_drive_capability(IR_TX_GPIO_NUM, GPIO_DRIVE_CAP_3));
+
     rmt_carrier_config_t carrier_cfg = {
-        .duty_cycle = 0.50f, // 50% duty cycle para maior potencia no LED IR
+        .duty_cycle = 0.50f, // 50% duty cycle para maior potencia luminosa no LED IR
         .frequency_hz = SONY_CARRIER_FREQ_HZ,
         .flags = {
             .polarity_active_low = false,
@@ -114,7 +124,7 @@ static void ir_rmt_init(void)
     ESP_ERROR_CHECK(rmt_new_copy_encoder(&copy_encoder_cfg, &s_rmt_copy_encoder));
 
     ESP_ERROR_CHECK(rmt_enable(s_rmt_tx_chan));
-    ESP_LOGI(TAG, "RMT TX inicializado com sucesso!");
+    ESP_LOGI(TAG, "RMT TX inicializado com sucesso (Drive Cap = MAX 40mA)!");
 }
 
 /* =========================================================================
@@ -145,11 +155,13 @@ static void sony_transmit_msb(uint32_t data, uint8_t nbits, int repeats)
     // Bits de dados (do bit mais significativo para o menos significativo)
     for (int i = nbits - 1; i >= 0; i--) {
         bool bit_is_one = (data >> i) & 0x1;
+        // No ultimo bit do frame, estende o espaco LOW para 24000 us (24 ms) direto no hardware RMT
+        uint16_t space_us = (i == 0) ? SONY_INTERFRAME_SPACE_US : SONY_BIT_SPACE_US;
         symbols[num_symbols++] = (rmt_symbol_word_t){
             .level0 = 1,
             .duration0 = bit_is_one ? SONY_BIT_ONE_MARK_US : SONY_BIT_ZERO_MARK_US,
             .level1 = 0,
-            .duration1 = SONY_BIT_SPACE_US,
+            .duration1 = space_us,
         };
     }
 
@@ -163,16 +175,22 @@ static void sony_transmit_msb(uint32_t data, uint8_t nbits, int repeats)
     ESP_LOGI(TAG, "Transmitindo Sony SIRC: data=0x%lX (%u bits) x%d", (unsigned long)data, nbits, repeats);
 
     for (int r = 0; r < repeats; r++) {
-        ESP_ERROR_CHECK(rmt_transmit(
+        esp_err_t err = rmt_transmit(
             s_rmt_tx_chan,
             s_rmt_copy_encoder,
             symbols,
             num_symbols * sizeof(rmt_symbol_word_t),
             &tx_cfg
-        ));
-        ESP_ERROR_CHECK(rmt_tx_wait_all_done(s_rmt_tx_chan, pdMS_TO_TICKS(100)));
-        if (r < repeats - 1) {
-            vTaskDelay(pdMS_TO_TICKS(SONY_INTERFRAME_GAP_MS));
+        );
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Falha em rmt_transmit: %s", esp_err_to_name(err));
+            break;
+        }
+        // IMPORTANTE: rmt_tx_wait_all_done recebe o timeout em MILISSEGUNDOS (nao usar pdMS_TO_TICKS aqui!)
+        err = rmt_tx_wait_all_done(s_rmt_tx_chan, SONY_TX_TIMEOUT_MS);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Timeout aguardando fim da transmissao RMT: %s", esp_err_to_name(err));
+            break;
         }
     }
 }
@@ -311,19 +329,20 @@ typedef struct {
 } sony_key_map_t;
 
 static const sony_key_map_t s_key_table[] = {
-    { "power",     0xA81,  12, 3, "POWER (0xA81)" },
-    { "vol_up",    0x481,  12, 3, "VOL+ (0x481)" },
-    { "vol_down",  0xC81,  12, 3, "VOL- (0xC81)" },
-    { "mute",      0x281,  12, 3, "MUTE (0x281)" },
-    { "md",        0x621,  12, 3, "MD DIRECT (0x621)" },
-    { "video_aux", 0x441,  12, 3, "VIDEO/AUX (0x441)" },
-    { "function",  0x4B09, 15, 3, "FUNCTION (0x4B09)" },
-    { "groove",    0x1309, 15, 3, "GROOVE (0x1309)" },
-    { "dbfb",      0x2309, 15, 3, "DBFB (0x2309)" },
-    { "eq",        0x6309, 15, 3, "EQ (0x6309)" },
-    { "effect",    0xF81,  12, 3, "EFFECT (0xF81)" },
-    { "surround",  0xD41,  12, 3, "SURROUND (0xD41)" },
-    { "display",   0xD21,  12, 3, "DISPLAY (0xD21)" },
+    { "power",     0xA81,  12, SONY_REPEAT_FRAMES, "POWER (0xA81)" },
+    { "vol_up",    0x481,  12, SONY_REPEAT_FRAMES, "VOL+ (0x481)" },
+    { "vol_down",  0xC81,  12, SONY_REPEAT_FRAMES, "VOL- (0xC81)" },
+    { "mute",      0x281,  12, SONY_REPEAT_FRAMES, "MUTE (0x281)" },
+    { "md",        0x621,  12, SONY_REPEAT_FRAMES, "MD DIRECT (0x621)" },
+    { "video_aux", 0x441,  12, SONY_REPEAT_FRAMES, "VIDEO/AUX (0x441)" },
+    { "function",  0x4B09, 15, SONY_REPEAT_FRAMES, "FUNCTION (0x4B09)" },
+    { "groove",    0x1309, 15, SONY_REPEAT_FRAMES, "GROOVE (0x1309)" },
+    { "dbfb",      0x2309, 15, SONY_REPEAT_FRAMES, "DBFB (0x2309)" },
+    { "eq",        0x6309, 15, SONY_REPEAT_FRAMES, "EQ (0x6309)" },
+    { "effect",    0xF81,  12, SONY_REPEAT_FRAMES, "EFFECT (0xF81)" },
+    { "surround",  0xD41,  12, SONY_REPEAT_FRAMES, "SURROUND (0xD41)" },
+    { "display",   0xD21,  12, SONY_REPEAT_FRAMES, "DISPLAY (0xD21)" },
+    { "cam_test",  0xFFF,  12, 35,                 "CAMERA IR TEST (1.5s)" },
 };
 
 static esp_err_t api_cmd_handler(httpd_req_t *req)
