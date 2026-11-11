@@ -564,7 +564,7 @@
       <div class="vfd-top">
         <span class="vfd-badge">MHC-GRX7</span>
         <span class="vfd-badge orange">DBFB / GROOVE</span>
-        <span class="vfd-badge">40kHz IR</span>
+        <span id="wsBadge" class="vfd-badge">WS INIT</span>
       </div>
       <div class="vfd-main">
         <span id="status">READY // MD-VIDEO</span>
@@ -701,20 +701,63 @@
   const led = document.getElementById('led');
   const status = document.getElementById('status');
   const vfdBars = document.getElementById('vfdBars');
+  const wsBadge = document.getElementById('wsBadge');
+
+  let ws = null;
+  let wsReconnectTimer = null;
+
+  function connectWS() {
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(proto + '//' + location.host + '/ws');
+
+    ws.onopen = () => {
+      wsBadge.textContent = 'WS ONLINE';
+      wsBadge.style.color = '#4effdf';
+    };
+
+    ws.onmessage = (ev) => {
+      status.textContent = ev.data;
+    };
+
+    ws.onclose = () => {
+      wsBadge.textContent = 'HTTP MODE';
+      wsBadge.style.color = '';
+      clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = setTimeout(connectWS, 1200);
+    };
+
+    ws.onerror = () => {
+      ws.close();
+    };
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      connectWS();
+    }
+  });
+  connectWS();
 
   function pulseFeedback(msg) {
-    if (navigator.vibrate) navigator.vibrate(25);
+    if (navigator.vibrate) navigator.vibrate(20);
     led.classList.add('active');
     vfdBars.classList.add('pulse');
     status.textContent = msg;
     setTimeout(() => {
       led.classList.remove('active');
       vfdBars.classList.remove('pulse');
-    }, 180);
+    }, 150);
   }
 
   async function sendKey(key, label) {
     pulseFeedback('TX: ' + label);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send('cmd:' + key);
+      return;
+    }
     try {
       const r = await fetch('/api/cmd?key=' + encodeURIComponent(key), { method: 'POST' });
       const txt = await r.text();
@@ -728,6 +771,10 @@
     const hex = document.getElementById('hexInput').value.trim();
     const bits = document.getElementById('bitsInput').value;
     pulseFeedback('RAW ' + hex + ' [' + bits + 'B]');
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send('raw:' + hex + ':' + bits);
+      return;
+    }
     const r = await fetch(`/api/raw?data=${encodeURIComponent(hex)}&bits=${bits}`, { method: 'POST' });
     status.textContent = await r.text();
   }
@@ -739,6 +786,10 @@
     const addr = parseInt(document.getElementById('addrNum').value, 10);
     const bits = (addr > 31) ? 15 : 12;
     pulseFeedback(`CMD=${cmd} ADDR=${addr}`);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(`sirc:${cmd}:${addr}:${bits}`);
+      return;
+    }
     const r = await fetch(`/api/sirc?cmd=${cmd}&addr=${addr}&bits=${bits}`, { method: 'POST' });
     status.textContent = await r.text();
   }
@@ -750,7 +801,7 @@
       e.preventDefault();
       btn.classList.add('pressed');
       sendKey(key, label);
-      timer = setInterval(() => sendKey(key, label), 250);
+      timer = setInterval(() => sendKey(key, label), 150);
     };
     const stop = () => {
       btn.classList.remove('pressed');

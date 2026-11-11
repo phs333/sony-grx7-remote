@@ -3,6 +3,7 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h" // IWYU pragma: keep
 #include "freertos/task.h"
+#include "freertos/queue.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
@@ -71,6 +72,14 @@ static const char *TAG = "SONY_GRX7";
 
 static rmt_channel_handle_t s_rmt_tx_chan = NULL;
 static rmt_encoder_handle_t s_rmt_copy_encoder = NULL;
+
+typedef struct {
+    uint32_t data;
+    uint8_t nbits;
+    int repeats;
+} ir_tx_msg_t;
+
+static QueueHandle_t s_ir_tx_queue = NULL;
 
 /* =========================================================================
  * INICIALIZACAO DO HARDWARE RMT (ESP-IDF v5.x / v6.x)
@@ -165,6 +174,35 @@ static void sony_transmit_msb(uint32_t data, uint8_t nbits, int repeats)
         if (r < repeats - 1) {
             vTaskDelay(pdMS_TO_TICKS(SONY_INTERFRAME_GAP_MS));
         }
+    }
+}
+
+static void ir_tx_task(void *arg)
+{
+    ir_tx_msg_t msg;
+    while (1) {
+        if (xQueueReceive(s_ir_tx_queue, &msg, portMAX_DELAY) == pdTRUE) {
+            sony_transmit_msb(msg.data, msg.nbits, msg.repeats);
+        }
+    }
+}
+
+static void ir_enqueue_tx(uint32_t data, uint8_t nbits, int repeats)
+{
+    if (s_ir_tx_queue != NULL) {
+        ir_tx_msg_t msg = {
+            .data = data,
+            .nbits = nbits,
+            .repeats = repeats,
+        };
+        if (xQueueSend(s_ir_tx_queue, &msg, 0) != pdTRUE) {
+            // Se a fila estiver cheia (ex.: segurando botao de volume), substitui o ultimo comando pendente
+            ir_tx_msg_t dropped;
+            xQueueReceive(s_ir_tx_queue, &dropped, 0);
+            xQueueSend(s_ir_tx_queue, &msg, 0);
+        }
+    } else {
+        sony_transmit_msb(data, nbits, repeats);
     }
 }
 
@@ -299,7 +337,7 @@ static esp_err_t api_cmd_handler(httpd_req_t *req)
 
     for (size_t i = 0; i < sizeof(s_key_table) / sizeof(s_key_table[0]); i++) {
         if (strcmp(key, s_key_table[i].key) == 0) {
-            sony_transmit_msb(s_key_table[i].data, s_key_table[i].nbits, s_key_table[i].repeats);
+            ir_enqueue_tx(s_key_table[i].data, s_key_table[i].nbits, s_key_table[i].repeats);
             httpd_resp_set_type(req, "text/plain");
             return httpd_resp_sendstr(req, s_key_table[i].desc);
         }
@@ -324,7 +362,7 @@ static esp_err_t api_raw_handler(httpd_req_t *req)
     uint8_t nbits = (uint8_t)atoi(bits_str);
     if (nbits == 0) nbits = 12;
 
-    sony_transmit_msb(data, nbits, SONY_REPEAT_FRAMES);
+    ir_enqueue_tx(data, nbits, SONY_REPEAT_FRAMES);
 
     char resp[64];
     snprintf(resp, sizeof(resp), "ENVIADO RAW 0x%lX (%u bits)", (unsigned long)data, nbits);
@@ -351,12 +389,84 @@ static esp_err_t api_sirc_handler(httpd_req_t *req)
     if (nbits != 12 && nbits != 15 && nbits != 20) nbits = 12;
 
     uint32_t msb_data = sony_cmd_addr_to_msb(cmd, addr, nbits);
-    sony_transmit_msb(msb_data, nbits, SONY_REPEAT_FRAMES);
+    ir_enqueue_tx(msb_data, nbits, SONY_REPEAT_FRAMES);
 
     char resp[80];
     snprintf(resp, sizeof(resp), "CMD=%u ADDR=%u -> HEX=0x%lX (%ub)", cmd, addr, (unsigned long)msb_data, nbits);
     httpd_resp_set_type(req, "text/plain");
     return httpd_resp_sendstr(req, resp);
+}
+
+/* =========================================================================
+ * HANDLER WEBSOCKET (/ws) PARA COMANDOS EM TEMPO REAL (BAIXISSIMA LATENCIA)
+ * Formatos aceitos:
+ *   "cmd:<tecla>"               ex: "cmd:vol_up"
+ *   "raw:<hex>:<bits>"          ex: "raw:0xA81:12"
+ *   "sirc:<cmd>:<addr>:<bits>"  ex: "sirc:21:16:12"
+ * ========================================================================= */
+static esp_err_t ws_handler(httpd_req_t *req)
+{
+    if (req->method == HTTP_GET) {
+        ESP_LOGI(TAG, "Cliente WebSocket conectado!");
+        return ESP_OK;
+    }
+
+    uint8_t buf[96] = {0};
+    httpd_ws_frame_t ws_pkt = {
+        .type = HTTPD_WS_TYPE_TEXT,
+        .payload = buf,
+    };
+
+    esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, sizeof(buf) - 1);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+    buf[ws_pkt.len] = '\0';
+
+    char resp[80] = "ERR // UNKNOWN";
+    const char *msg = (const char *)buf;
+
+    if (strncmp(msg, "cmd:", 4) == 0) {
+        const char *key = msg + 4;
+        for (size_t i = 0; i < sizeof(s_key_table) / sizeof(s_key_table[0]); i++) {
+            if (strcmp(key, s_key_table[i].key) == 0) {
+                ir_enqueue_tx(s_key_table[i].data, s_key_table[i].nbits, s_key_table[i].repeats);
+                snprintf(resp, sizeof(resp), "OK // %s", s_key_table[i].desc);
+                break;
+            }
+        }
+    } else if (strncmp(msg, "raw:", 4) == 0) {
+        char copy[64];
+        strncpy(copy, msg + 4, sizeof(copy) - 1);
+        copy[sizeof(copy) - 1] = '\0';
+        char *sep = strchr(copy, ':');
+        uint8_t nbits = 12;
+        if (sep) {
+            *sep = '\0';
+            nbits = (uint8_t)atoi(sep + 1);
+            if (nbits == 0) nbits = 12;
+        }
+        uint32_t data = (uint32_t)strtoul(copy, NULL, 0);
+        ir_enqueue_tx(data, nbits, SONY_REPEAT_FRAMES);
+        snprintf(resp, sizeof(resp), "RAW 0x%lX (%uB)", (unsigned long)data, nbits);
+    } else if (strncmp(msg, "sirc:", 5) == 0) {
+        unsigned int cmd = 0, addr = 16, nbits = 12;
+        if (sscanf(msg + 5, "%u:%u:%u", &cmd, &addr, &nbits) >= 2) {
+            if (nbits != 12 && nbits != 15 && nbits != 20) nbits = 12;
+            uint32_t msb_data = sony_cmd_addr_to_msb((uint8_t)cmd, (uint16_t)addr, (uint8_t)nbits);
+            ir_enqueue_tx(msb_data, (uint8_t)nbits, SONY_REPEAT_FRAMES);
+            snprintf(resp, sizeof(resp), "CMD=%u ADDR=%u -> 0x%lX", cmd, addr, (unsigned long)msb_data);
+        }
+    }
+
+    httpd_ws_frame_t resp_pkt = {
+        .final = true,
+        .fragmented = false,
+        .type = HTTPD_WS_TYPE_TEXT,
+        .payload = (uint8_t *)resp,
+        .len = strlen(resp),
+    };
+    return httpd_ws_send_frame(req, &resp_pkt);
 }
 
 static void start_webserver(void)
@@ -409,6 +519,13 @@ static void start_webserver(void)
             .handler   = api_sirc_handler,
             .user_ctx  = NULL
         };
+        const httpd_uri_t ws_uri = {
+            .uri          = "/ws",
+            .method       = HTTP_GET,
+            .handler      = ws_handler,
+            .user_ctx     = NULL,
+            .is_websocket = true
+        };
 
         httpd_register_uri_handler(server, &index_uri);
         httpd_register_uri_handler(server, &manifest_uri);
@@ -417,8 +534,9 @@ static void start_webserver(void)
         httpd_register_uri_handler(server, &cmd_uri);
         httpd_register_uri_handler(server, &raw_uri);
         httpd_register_uri_handler(server, &sirc_uri);
+        httpd_register_uri_handler(server, &ws_uri);
 
-        ESP_LOGI(TAG, "Webserver iniciado na porta %d!", config.server_port);
+        ESP_LOGI(TAG, "Webserver + WebSocket (/ws) iniciado na porta %d!", config.server_port);
     }
 }
 
@@ -522,6 +640,8 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     ir_rmt_init();
+    s_ir_tx_queue = xQueueCreate(3, sizeof(ir_tx_msg_t));
+    xTaskCreate(ir_tx_task, "ir_tx_task", 3072, NULL, 10, NULL);
     wifi_init_sta();
     start_webserver();
 }
