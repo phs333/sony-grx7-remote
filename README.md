@@ -63,6 +63,21 @@ http://192.168.x.x
 
 ---
 
+## Como Instalar como App em Tela Cheia (Android Chrome / PWA)
+
+A interface possui manifesto PWA (`/manifest.json`), ícone vetorial (`/icon.svg`), Service Worker (`/sw.js`) e um botão **`⛶ Tela Cheia`** direto no topo do controle.
+
+Para que o Chrome do Android permita **Instalar como Aplicativo Nativo** mesmo sem HTTPS (em IP local `http://192.168.x.x`):
+
+1. Abra no Chrome do celular:
+   ```text
+   chrome://flags/#unsafely-treat-insecure-origin-as-secure
+   ```
+2. Digite o endereço do ESP32 (ex.: `http://192.168.1.100`), mude para **Enabled** e toque em **Relaunch**.
+3. Acesse o IP do controle, toque no menu do Chrome (**⋮**) e selecione **Adicionar à tela inicial -> Instalar aplicativo**.
+
+---
+
 ## Tabela de Códigos Sony SIRC Utilizados
 
 | Função | Código Hex (MSB) | Bits | Comando (LSB) | Endereço (LSB) |
