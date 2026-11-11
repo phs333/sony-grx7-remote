@@ -222,7 +222,8 @@ static const sony_key_map_t s_key_table[] = {
     { "dbfb",      0x2309, 15, 3, "DBFB (0x2309)" },
     { "eq",        0x6309, 15, 3, "EQ (0x6309)" },
     { "effect",    0xF81,  12, 3, "EFFECT (0xF81)" },
-    { "surround",  0xD21,  12, 3, "SURROUND (0xD21)" },
+    { "surround",  0xD41,  12, 3, "SURROUND (0xD41)" },
+    { "display",   0xD21,  12, 3, "DISPLAY (0xD21)" },
 };
 
 static esp_err_t api_cmd_handler(httpd_req_t *req)

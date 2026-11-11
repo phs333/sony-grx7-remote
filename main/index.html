@@ -175,9 +175,16 @@
         <span class="sub">Aumentar</span>
       </button>
     </div>
-    <button onclick="sendKey('mute', 'MUTE (0x281)')" style="padding:12px">
-      <span>&#x1F507; MUTE (SILENCIAR)</span>
-    </button>
+    <div class="grid-2">
+      <button onclick="sendKey('mute', 'MUTE (0x281)')" style="padding:12px">
+        <span>&#x1F507; MUTE</span>
+        <span class="sub">Silenciar</span>
+      </button>
+      <button onclick="sendKey('display', 'DISPLAY (0xD21)')" style="padding:12px">
+        <span>&#x1F4DF; DISPLAY</span>
+        <span class="sub">Visor / Demo Off</span>
+      </button>
+    </div>
 
     <div class="section-label">Graves &amp; Equalizador GRX7</div>
     <div class="grid-2">
@@ -199,7 +206,7 @@
         <span>&#x2728; EFFECT</span>
         <span class="sub">On / Off</span>
       </button>
-      <button onclick="sendKey('surround', 'SURROUND (0xD21)')">
+      <button onclick="sendKey('surround', 'SURROUND (0xD41)')">
         <span>&#x1F50A; SURR</span>
         <span class="sub">Modo</span>
       </button>
