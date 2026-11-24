@@ -68,12 +68,14 @@ static const char *TAG = "SONY_GRX7";
 #define SONY_BIT_ONE_MARK_US    1200
 #define SONY_BIT_ZERO_MARK_US   600
 #define SONY_BIT_SPACE_US       600
-#define SONY_INTERFRAME_SPACE_US 24000  // Espaco exato de 24 ms entre frames no hardware RMT (periodo Sony ~45 ms)
+#define SONY_FRAME_PERIOD_US    45000   // Periodo total CONST_LENGTH oficial Sony SIRC = 45 ms (inicio a inicio)
 #define SONY_REPEAT_FRAMES      3       // Padrao oficial Sony SIRC: 3 frames por comando (~135 ms)
-#define SONY_TX_TIMEOUT_MS      200     // Timeout em MILISSEGUNDOS para rmt_tx_wait_all_done()
+#define SONY_MAX_BATCH_FRAMES   5       // Maximo de frames por transacao unica na RAM de hardware RMT (5 * 21 = 105 < 128)
+#define SONY_TX_TIMEOUT_MS      1000    // Timeout amplo em MILISSEGUNDOS para aguardar rajada completa no RMT
 
 static rmt_channel_handle_t s_rmt_tx_chan = NULL;
 static rmt_encoder_handle_t s_rmt_copy_encoder = NULL;
+static DRAM_ATTR rmt_symbol_word_t s_tx_symbols[128]; // Buffer estatico em SRAM interna para DMA/RMT sem risco de stack
 
 typedef struct {
     uint32_t data;
@@ -98,7 +100,9 @@ static void ir_rmt_init(void)
     rmt_tx_channel_config_t tx_chan_cfg = {
         .clk_src = RMT_CLK_SRC_DEFAULT,
         .gpio_num = IR_TX_GPIO_NUM,
-        .mem_block_symbols = 64,
+        // Usa 4 blocos de memoria RMT dedicados (256 simbolos, ping_pong = 128) para enviar os 3 frames de
+        // 12, 15 ou 20 bits (ate 63 simbolos) em UMA UNICA transacao de hardware sem interrupcoes no meio!
+        .mem_block_symbols = 256,
         .resolution_hz = RMT_RESOLUTION_HZ,
         .trans_queue_depth = 4,
         .flags = {
@@ -124,12 +128,26 @@ static void ir_rmt_init(void)
     ESP_ERROR_CHECK(rmt_new_copy_encoder(&copy_encoder_cfg, &s_rmt_copy_encoder));
 
     ESP_ERROR_CHECK(rmt_enable(s_rmt_tx_chan));
-    ESP_LOGI(TAG, "RMT TX inicializado com sucesso (Drive Cap = MAX 40mA)!");
+
+    // Estabiliza o latch de saida RMT em nivel LOW antes do primeiro comando (igual ao setup do ESPHome)
+    rmt_symbol_word_t idle_prime = { .level0 = 0, .duration0 = 1, .level1 = 0, .duration1 = 0 };
+    rmt_transmit_config_t prime_cfg = { .loop_count = 0, .flags = { .eot_level = 0 } };
+    ESP_ERROR_CHECK(rmt_transmit(s_rmt_tx_chan, s_rmt_copy_encoder, &idle_prime, sizeof(idle_prime), &prime_cfg));
+    ESP_ERROR_CHECK(rmt_tx_wait_all_done(s_rmt_tx_chan, 100));
+
+    ESP_LOGI(TAG, "RMT TX inicializado com sucesso (256 simbolos HW, Drive Cap = MAX 40mA)!");
 }
 
 /* =========================================================================
  * TRANSMISSAO SONY SIRC (12, 15 ou 20 bits - formato MSB-first estilo ESPHome/LIRC)
- * Exemplo: Power = 0xA81 (12 bits), Vol+ = 0x481 (12 bits)
+ * Exemplo: Power = 0xA81 (12 bits), Function = 0x4B09 (15 bits)
+ *
+ * CORRECAO CRITICA PARA 15 E 20 BITS:
+ * 1) O protocolo Sony SIRC usa CONST_LENGTH = 45000 us (45 ms do inicio de um Header
+ *    ate o inicio do proximo Header). Antes, o espaco fixo de 24 ms somado aos ~25 ms
+ *    de um frame de 15 bits estourava o periodo para ~50+ ms, fazendo o som rejeitar!
+ * 2) Agora todos os 3 frames sao empacotados em um unico buffer na SRAM interna do RMT
+ *    e disparados em UMA UNICA chamada rmt_transmit(), eliminando jitter de Wi-Fi/RTOS.
  * ========================================================================= */
 static void sony_transmit_msb(uint32_t data, uint8_t nbits, int repeats)
 {
@@ -140,30 +158,29 @@ static void sony_transmit_msb(uint32_t data, uint8_t nbits, int repeats)
         repeats = SONY_REPEAT_FRAMES;
     }
 
-    // 1 simbolo de Header + nbits simbolos de dados
-    rmt_symbol_word_t symbols[22];
-    size_t num_symbols = 0;
+    // Mascara de seguranca para garantir que nao haja bits extras acima de nbits
+    uint32_t mask_valid = (1UL << nbits) - 1UL;
+    data &= mask_valid;
 
-    // Header Sony: 2400us HIGH + 600us LOW
-    symbols[num_symbols++] = (rmt_symbol_word_t){
-        .level0 = 1,
-        .duration0 = SONY_HEADER_MARK_US,
-        .level1 = 0,
-        .duration1 = SONY_HEADER_SPACE_US,
-    };
-
-    // Bits de dados (do bit mais significativo para o menos significativo)
+    // Calcula a duracao ativa exata do frame (do inicio do Header ate o fim do ultimo pulso HIGH)
+    uint32_t frame_active_us = SONY_HEADER_MARK_US + SONY_HEADER_SPACE_US;
     for (int i = nbits - 1; i >= 0; i--) {
         bool bit_is_one = (data >> i) & 0x1;
-        // No ultimo bit do frame, estende o espaco LOW para 24000 us (24 ms) direto no hardware RMT
-        uint16_t space_us = (i == 0) ? SONY_INTERFRAME_SPACE_US : SONY_BIT_SPACE_US;
-        symbols[num_symbols++] = (rmt_symbol_word_t){
-            .level0 = 1,
-            .duration0 = bit_is_one ? SONY_BIT_ONE_MARK_US : SONY_BIT_ZERO_MARK_US,
-            .level1 = 0,
-            .duration1 = space_us,
-        };
+        frame_active_us += bit_is_one ? SONY_BIT_ONE_MARK_US : SONY_BIT_ZERO_MARK_US;
+        if (i > 0) {
+            frame_active_us += SONY_BIT_SPACE_US;
+        }
     }
+
+    // Calcula o espaco LOW restante para fechar cravado o periodo oficial de 45.000 us (CONST_LENGTH)
+    // Cabe sempre nos 15 bits do RMT (max 32767 us): p/ 12b ~25800 us, p/ 15b ~21000 us, p/ 20b ~13000 us
+    uint32_t gap_calc_us = (frame_active_us + 5000U < SONY_FRAME_PERIOD_US)
+                           ? (SONY_FRAME_PERIOD_US - frame_active_us)
+                           : 10000U;
+    if (gap_calc_us > 32767U) {
+        gap_calc_us = 32767U;
+    }
+    uint16_t interframe_space_us = (uint16_t)gap_calc_us;
 
     rmt_transmit_config_t tx_cfg = {
         .loop_count = 0,
@@ -172,13 +189,44 @@ static void sony_transmit_msb(uint32_t data, uint8_t nbits, int repeats)
         },
     };
 
-    ESP_LOGI(TAG, "Transmitindo Sony SIRC: data=0x%lX (%u bits) x%d", (unsigned long)data, nbits, repeats);
+    ESP_LOGI(TAG, "TX Sony SIRC: data=0x%lX (%u bits) x%d [ativo=%lu us, gap=%u us, periodo=%lu us]",
+             (unsigned long)data, nbits, repeats,
+             (unsigned long)frame_active_us, interframe_space_us,
+             (unsigned long)(frame_active_us + interframe_space_us));
 
-    for (int r = 0; r < repeats; r++) {
+    int remaining = repeats;
+    while (remaining > 0) {
+        int batch = (remaining > SONY_MAX_BATCH_FRAMES) ? SONY_MAX_BATCH_FRAMES : remaining;
+        size_t num_symbols = 0;
+
+        for (int r = 0; r < batch; r++) {
+            // Header Sony: 2400us HIGH + 600us LOW
+            s_tx_symbols[num_symbols++] = (rmt_symbol_word_t){
+                .level0 = 1,
+                .duration0 = SONY_HEADER_MARK_US,
+                .level1 = 0,
+                .duration1 = SONY_HEADER_SPACE_US,
+            };
+
+            // Bits de dados MSB-first (identico ao SonyProtocol::encode do ESPHome)
+            for (int i = nbits - 1; i >= 0; i--) {
+                bool bit_is_one = (data >> i) & 0x1;
+                // No ultimo bit (i == 0) de cada frame, aplica interframe_space_us (level LOW) para cravar
+                // exatamente 45.000 us de periodo inicio-a-inicio no hardware RMT e proteger contra colisoes
+                uint16_t space_us = (i == 0) ? interframe_space_us : SONY_BIT_SPACE_US;
+                s_tx_symbols[num_symbols++] = (rmt_symbol_word_t){
+                    .level0 = 1,
+                    .duration0 = bit_is_one ? SONY_BIT_ONE_MARK_US : SONY_BIT_ZERO_MARK_US,
+                    .level1 = 0,
+                    .duration1 = space_us,
+                };
+            }
+        }
+
         esp_err_t err = rmt_transmit(
             s_rmt_tx_chan,
             s_rmt_copy_encoder,
-            symbols,
+            s_tx_symbols,
             num_symbols * sizeof(rmt_symbol_word_t),
             &tx_cfg
         );
@@ -186,12 +234,13 @@ static void sony_transmit_msb(uint32_t data, uint8_t nbits, int repeats)
             ESP_LOGE(TAG, "Falha em rmt_transmit: %s", esp_err_to_name(err));
             break;
         }
-        // IMPORTANTE: rmt_tx_wait_all_done recebe o timeout em MILISSEGUNDOS (nao usar pdMS_TO_TICKS aqui!)
         err = rmt_tx_wait_all_done(s_rmt_tx_chan, SONY_TX_TIMEOUT_MS);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Timeout aguardando fim da transmissao RMT: %s", esp_err_to_name(err));
             break;
         }
+
+        remaining -= batch;
     }
 }
 

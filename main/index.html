@@ -686,9 +686,10 @@
       <div class="lab-row">
         <input id="cmdNum" type="number" min="0" max="127" value="21" placeholder="Cmd">
         <select id="addrNum" style="width:125px">
-          <option value="16" selected>ADDR 0x10 (12b)</option>
-          <option value="144">ADDR 0x90 (15b)</option>
-          <option value="80">ADDR 0x50 (15b)</option>
+          <option value="16" data-bits="12" selected>ADDR 0x10 (12b)</option>
+          <option value="144" data-bits="15">ADDR 0x90 (15b)</option>
+          <option value="80" data-bits="15">ADDR 0x50 (15b)</option>
+          <option value="13" data-bits="15">ADDR 0x0D (15b)</option>
         </select>
         <button class="hw-btn btn-lab" onclick="stepCmd(-1)">&minus;</button>
         <button class="hw-btn btn-lab" onclick="stepCmd(0)">TEST</button>
@@ -788,8 +789,10 @@
     const el = document.getElementById('cmdNum');
     let cmd = (parseInt(el.value || '0', 10) + delta + 128) % 128;
     el.value = cmd;
-    const addr = parseInt(document.getElementById('addrNum').value, 10);
-    const bits = (addr > 31) ? 15 : 12;
+    const addrSel = document.getElementById('addrNum');
+    const addr = parseInt(addrSel.value, 10);
+    const opt = addrSel.options[addrSel.selectedIndex];
+    const bits = opt && opt.dataset.bits ? parseInt(opt.dataset.bits, 10) : ((addr > 31) ? 15 : 12);
     pulseFeedback(`CMD=${cmd} ADDR=${addr}`);
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(`sirc:${cmd}:${addr}:${bits}`);
