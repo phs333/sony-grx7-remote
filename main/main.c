@@ -386,46 +386,46 @@ typedef struct {
 
 static const sony_key_map_t s_key_table[] = {
     /* Comandos 12-bit (Addr 0x10 = 16) - Confirmados funcionando no MHC-GRX7 Manaus */
-    { "power",       0xA81,   12, SONY_REPEAT_FRAMES, "POWER I/O (0xA81)" },
-    { "vol_up",      0x481,   12, SONY_REPEAT_FRAMES, "VOL + (0x481)" },
-    { "vol_down",    0xC81,   12, SONY_REPEAT_FRAMES, "VOL - (0xC81)" },
-    { "display",     0xD21,   12, SONY_REPEAT_FRAMES, "DISPLAY (0xD21)" },
-    { "sleep",       0x061,   12, SONY_REPEAT_FRAMES, "SLEEP (0x061)" },
-    { "mute",        0x281,   12, SONY_REPEAT_FRAMES, "MUTING (0x281)" },
+    { "power",       0xA81,   12, SONY_REPEAT_FRAMES, "POWER I/O" },
+    { "vol_up",      0x481,   12, SONY_REPEAT_FRAMES, "VOLUME +" },
+    { "vol_down",    0xC81,   12, SONY_REPEAT_FRAMES, "VOLUME -" },
+    { "display",     0xD21,   12, SONY_REPEAT_FRAMES, "DISPLAY" },
+    { "sleep",       0x061,   12, SONY_REPEAT_FRAMES, "SLEEP TIMER" },
+    { "mute",        0x281,   12, SONY_REPEAT_FRAMES, "MUTING" },
 
     /* Seletores de Fonte Diretos e Ciclicos (15-bit Addr 0x90 + 12-bit Addr 0x10) */
-    { "function",    0x4B09,  15, SONY_REPEAT_FRAMES, "FUNCTION (0x4B09 15b)" },
-    { "cd",          0xA41,   12, SONY_REPEAT_FRAMES, "CD (0xA41)" },
-    { "tuner",       0xF01,   12, SONY_REPEAT_FRAMES, "TUNER/BAND (0xF01)" },
-    { "tape",        0xC41,   12, SONY_REPEAT_FRAMES, "TAPE A/B (0xC41)" },
-    { "md_video",    0x961,   12, SONY_REPEAT_FRAMES, "MD/VIDEO (0x961)" },
-    { "md",          0x621,   12, SONY_REPEAT_FRAMES, "MD/DAT (0x621)" },
-    { "video_aux",   0x441,   12, SONY_REPEAT_FRAMES, "VIDEO AUX (0x441)" },
+    { "function",    0x4B09,  15, SONY_REPEAT_FRAMES, "FUNCTION" },
+    { "cd",          0xA41,   12, SONY_REPEAT_FRAMES, "CD" },
+    { "tuner",       0xF01,   12, SONY_REPEAT_FRAMES, "TUNER / BAND" },
+    { "tape",        0xC41,   12, SONY_REPEAT_FRAMES, "TAPE A/B" },
+    { "md_video",    0x961,   12, SONY_REPEAT_FRAMES, "MD / VIDEO" },
+    { "md",          0x621,   12, SONY_REPEAT_FRAMES, "MD / DAT" },
+    { "video_aux",   0x441,   12, SONY_REPEAT_FRAMES, "VIDEO AUX" },
 
     /* Processamento de Audio, Graves, Equalizador e Efeitos DJ (15-bit / 12-bit / 20-bit) */
-    { "groove",      0x2F08,  15, SONY_REPEAT_FRAMES, "GROOVE (0x2F08 15b)" },
-    { "groove_12",   0x5E1,   12, SONY_REPEAT_FRAMES, "GROOVE 12B (0x5E1)" },
-    { "dbfb",        0x5909,  15, SONY_REPEAT_FRAMES, "DBFB / BASS (0x5909 15b)" },
-    { "dbfb_12",     0x8C6,   12, SONY_REPEAT_FRAMES, "DBFB 12B (0x8C6)" },
-    { "eq",          0x6309,  15, SONY_REPEAT_FRAMES, "EQ (0x6309 15b)" },
-    { "pfile",       0x3B09,  15, SONY_REPEAT_FRAMES, "P.FILE / EQ (0x3B09 15b)" },
-    { "effect",      0x1909,  15, SONY_REPEAT_FRAMES, "EQ/TONE (0x1909 15b)" },
-    { "effect_12",   0x146,   12, SONY_REPEAT_FRAMES, "EFFECT 12B (0x146)" },
-    { "surround",    0x0109,  15, SONY_REPEAT_FRAMES, "SURROUND (0x0109 15b)" },
-    { "surround_12", 0xFC6,   12, SONY_REPEAT_FRAMES, "SURROUND 12B (0xFC6)" },
-    { "loop",        0x1F1,   12, SONY_REPEAT_FRAMES, "DJ LOOP (0x1F1)" },
-    { "flash",       0xEEB99, 20, SONY_REPEAT_FRAMES, "DJ FLASH (0xEEB99 20b)" },
+    { "groove",      0x2F08,  15, SONY_REPEAT_FRAMES, "GROOVE" },
+    { "groove_12",   0x5E1,   12, SONY_REPEAT_FRAMES, "GROOVE" },
+    { "dbfb",        0x5909,  15, SONY_REPEAT_FRAMES, "DBFB BASS" },
+    { "dbfb_12",     0x8C6,   12, SONY_REPEAT_FRAMES, "DBFB BASS" },
+    { "eq",          0x6309,  15, SONY_REPEAT_FRAMES, "EQUALIZER" },
+    { "pfile",       0x3B09,  15, SONY_REPEAT_FRAMES, "P.FILE" },
+    { "effect",      0x1909,  15, SONY_REPEAT_FRAMES, "EFFECT" },
+    { "effect_12",   0x146,   12, SONY_REPEAT_FRAMES, "EFFECT" },
+    { "surround",    0x0109,  15, SONY_REPEAT_FRAMES, "SURROUND" },
+    { "surround_12", 0xFC6,   12, SONY_REPEAT_FRAMES, "SURROUND" },
+    { "loop",        0x1F1,   12, SONY_REPEAT_FRAMES, "DJ LOOP" },
+    { "flash",       0xEEB99, 20, SONY_REPEAT_FRAMES, "DJ FLASH" },
 
-    /* Transporte CD / Tape (20-bit Addr 26.57 = 0x073A) */
-    { "play",        0x4CB9C, 20, SONY_REPEAT_FRAMES, "PLAY (0x4CB9C 20b)" },
-    { "pause",       0x9CB9C, 20, SONY_REPEAT_FRAMES, "PAUSE (0x9CB9C 20b)" },
-    { "stop",        0x1CB9C, 20, SONY_REPEAT_FRAMES, "STOP (0x1CB9C 20b)" },
-    { "prev",        0x0CB9C, 20, SONY_REPEAT_FRAMES, "PREV (0x0CB9C 20b)" },
-    { "next",        0x8CB9C, 20, SONY_REPEAT_FRAMES, "NEXT (0x8CB9C 20b)" },
-    { "disc_skip",   0x7CB9C, 20, SONY_REPEAT_FRAMES, "DISC SKIP (0x7CB9C 20b)" },
+    /* Transporte CD / Tape (mantidos na API caso usados via URL/scanner) */
+    { "play",        0x4CB9C, 20, SONY_REPEAT_FRAMES, "PLAY" },
+    { "pause",       0x9CB9C, 20, SONY_REPEAT_FRAMES, "PAUSE" },
+    { "stop",        0x1CB9C, 20, SONY_REPEAT_FRAMES, "STOP" },
+    { "prev",        0x0CB9C, 20, SONY_REPEAT_FRAMES, "PREV" },
+    { "next",        0x8CB9C, 20, SONY_REPEAT_FRAMES, "NEXT" },
+    { "disc_skip",   0x7CB9C, 20, SONY_REPEAT_FRAMES, "DISC SKIP" },
 
     /* Utilitario de teste visual do LED IR pela camera do celular */
-    { "cam_test",    0xFFF,   12, 35,                 "CAMERA IR TEST (1.5s)" },
+    { "cam_test",    0xFFF,   12, 35,                 "CAMERA IR TEST" },
 };
 
 static esp_err_t api_cmd_handler(httpd_req_t *req)
