@@ -76,6 +76,9 @@ static const char *TAG = "SONY_GRX7";
 #define SONY_REPEAT_FRAMES      3       // Padrao oficial Sony SIRC: 3 frames por comando (~135 ms)
 #define SONY_MAX_BATCH_FRAMES   5       // Maximo de frames por transacao unica na RAM de hardware RMT (5 * 21 = 105 < 128)
 #define SONY_TX_TIMEOUT_MS      1000    // Timeout amplo em MILISSEGUNDOS para aguardar rajada completa no RMT
+#define AUTO_POWER_ON_DELAY_MS  3000    // Espera 3s ao energizar a placa antes de enviar POWER automaticamente
+#define SONY_POWER_CMD_HEX      0xA81   // POWER I/O 12-bit (Addr 0x10, Cmd 21) confirmado no MHC-GRX7
+#define SONY_POWER_CMD_BITS     12
 
 static rmt_channel_handle_t s_rmt_tx_chan = NULL;
 static rmt_encoder_handle_t s_rmt_copy_encoder = NULL;
@@ -1000,6 +1003,15 @@ static void wifi_init_sta(void)
     esp_wifi_set_ps(WIFI_PS_NONE);
 }
 
+static void auto_power_on_task(void *arg)
+{
+    ESP_LOGI(TAG, "Auto-Power ON: placa energizada! Aguardando %d ms para ligar o som...", AUTO_POWER_ON_DELAY_MS);
+    vTaskDelay(pdMS_TO_TICKS(AUTO_POWER_ON_DELAY_MS));
+    ESP_LOGI(TAG, "Auto-Power ON: disparando POWER (0x%X, %u bits)!", SONY_POWER_CMD_HEX, SONY_POWER_CMD_BITS);
+    ir_enqueue_tx(SONY_POWER_CMD_HEX, SONY_POWER_CMD_BITS, SONY_REPEAT_FRAMES);
+    vTaskDelete(NULL);
+}
+
 void app_main(void)
 {
     esp_err_t ret = nvs_flash_init();
@@ -1012,6 +1024,15 @@ void app_main(void)
     ir_rmt_init();
     s_ir_tx_queue = xQueueCreate(3, sizeof(ir_tx_msg_t));
     xTaskCreate(ir_tx_task, "ir_tx_task", 3072, NULL, 12, NULL);
+
+    // Envia POWER 3s apos energizar a placa (ignora reboots de software/OTA para nao desligar o som ja ligado)
+    esp_reset_reason_t rst_reason = esp_reset_reason();
+    if (rst_reason == ESP_RST_POWERON || rst_reason == ESP_RST_EXT || rst_reason == ESP_RST_BROWNOUT) {
+        xTaskCreate(auto_power_on_task, "auto_pwr_on", 3072, NULL, 10, NULL);
+    } else {
+        ESP_LOGI(TAG, "Auto-Power ON ignorado neste boot (reset_reason=%d, ex: reboot OTA/SW).", (int)rst_reason);
+    }
+
     ota_boot_check();
     wifi_init_sta();
     start_webserver();
