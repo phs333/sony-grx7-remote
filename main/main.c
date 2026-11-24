@@ -10,6 +10,10 @@
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "esp_http_server.h"
+#include "esp_system.h" // IWYU pragma: keep
+#include "esp_ota_ops.h"
+#include "esp_app_format.h"
+#include "esp_partition.h"
 #include "driver/gpio.h" // IWYU pragma: keep
 #include "driver/rmt_tx.h"
 
@@ -378,20 +382,47 @@ typedef struct {
 } sony_key_map_t;
 
 static const sony_key_map_t s_key_table[] = {
-    { "power",     0xA81,  12, SONY_REPEAT_FRAMES, "POWER (0xA81)" },
-    { "vol_up",    0x481,  12, SONY_REPEAT_FRAMES, "VOL+ (0x481)" },
-    { "vol_down",  0xC81,  12, SONY_REPEAT_FRAMES, "VOL- (0xC81)" },
-    { "mute",      0x281,  12, SONY_REPEAT_FRAMES, "MUTE (0x281)" },
-    { "md",        0x621,  12, SONY_REPEAT_FRAMES, "MD DIRECT (0x621)" },
-    { "video_aux", 0x441,  12, SONY_REPEAT_FRAMES, "VIDEO/AUX (0x441)" },
-    { "function",  0x4B09, 15, SONY_REPEAT_FRAMES, "FUNCTION (0x4B09)" },
-    { "groove",    0x1309, 15, SONY_REPEAT_FRAMES, "GROOVE (0x1309)" },
-    { "dbfb",      0x2309, 15, SONY_REPEAT_FRAMES, "DBFB (0x2309)" },
-    { "eq",        0x6309, 15, SONY_REPEAT_FRAMES, "EQ (0x6309)" },
-    { "effect",    0xF81,  12, SONY_REPEAT_FRAMES, "EFFECT (0xF81)" },
-    { "surround",  0xD41,  12, SONY_REPEAT_FRAMES, "SURROUND (0xD41)" },
-    { "display",   0xD21,  12, SONY_REPEAT_FRAMES, "DISPLAY (0xD21)" },
-    { "cam_test",  0xFFF,  12, 35,                 "CAMERA IR TEST (1.5s)" },
+    /* Comandos 12-bit (Addr 0x10 = 16) - Confirmados funcionando no MHC-GRX7 Manaus */
+    { "power",       0xA81,   12, SONY_REPEAT_FRAMES, "POWER I/O (0xA81)" },
+    { "vol_up",      0x481,   12, SONY_REPEAT_FRAMES, "VOL + (0x481)" },
+    { "vol_down",    0xC81,   12, SONY_REPEAT_FRAMES, "VOL - (0xC81)" },
+    { "display",     0xD21,   12, SONY_REPEAT_FRAMES, "DISPLAY (0xD21)" },
+    { "sleep",       0x061,   12, SONY_REPEAT_FRAMES, "SLEEP (0x061)" },
+    { "mute",        0x281,   12, SONY_REPEAT_FRAMES, "MUTING (0x281)" },
+
+    /* Seletores de Fonte Diretos e Ciclicos (15-bit Addr 0x90 + 12-bit Addr 0x10) */
+    { "function",    0x4B09,  15, SONY_REPEAT_FRAMES, "FUNCTION (0x4B09 15b)" },
+    { "cd",          0xA41,   12, SONY_REPEAT_FRAMES, "CD (0xA41)" },
+    { "tuner",       0xF01,   12, SONY_REPEAT_FRAMES, "TUNER/BAND (0xF01)" },
+    { "tape",        0xC41,   12, SONY_REPEAT_FRAMES, "TAPE A/B (0xC41)" },
+    { "md_video",    0x961,   12, SONY_REPEAT_FRAMES, "MD/VIDEO (0x961)" },
+    { "md",          0x621,   12, SONY_REPEAT_FRAMES, "MD/DAT (0x621)" },
+    { "video_aux",   0x441,   12, SONY_REPEAT_FRAMES, "VIDEO AUX (0x441)" },
+
+    /* Processamento de Audio, Graves, Equalizador e Efeitos DJ (15-bit / 12-bit / 20-bit) */
+    { "groove",      0x2F08,  15, SONY_REPEAT_FRAMES, "GROOVE (0x2F08 15b)" },
+    { "groove_12",   0x5E1,   12, SONY_REPEAT_FRAMES, "GROOVE 12B (0x5E1)" },
+    { "dbfb",        0x5909,  15, SONY_REPEAT_FRAMES, "DBFB / BASS (0x5909 15b)" },
+    { "dbfb_12",     0x8C6,   12, SONY_REPEAT_FRAMES, "DBFB 12B (0x8C6)" },
+    { "eq",          0x6309,  15, SONY_REPEAT_FRAMES, "EQ (0x6309 15b)" },
+    { "pfile",       0x3B09,  15, SONY_REPEAT_FRAMES, "P.FILE / EQ (0x3B09 15b)" },
+    { "effect",      0x1909,  15, SONY_REPEAT_FRAMES, "EQ/TONE (0x1909 15b)" },
+    { "effect_12",   0x146,   12, SONY_REPEAT_FRAMES, "EFFECT 12B (0x146)" },
+    { "surround",    0x0109,  15, SONY_REPEAT_FRAMES, "SURROUND (0x0109 15b)" },
+    { "surround_12", 0xFC6,   12, SONY_REPEAT_FRAMES, "SURROUND 12B (0xFC6)" },
+    { "loop",        0x1F1,   12, SONY_REPEAT_FRAMES, "DJ LOOP (0x1F1)" },
+    { "flash",       0xEEB99, 20, SONY_REPEAT_FRAMES, "DJ FLASH (0xEEB99 20b)" },
+
+    /* Transporte CD / Tape (20-bit Addr 26.57 = 0x073A) */
+    { "play",        0x4CB9C, 20, SONY_REPEAT_FRAMES, "PLAY (0x4CB9C 20b)" },
+    { "pause",       0x9CB9C, 20, SONY_REPEAT_FRAMES, "PAUSE (0x9CB9C 20b)" },
+    { "stop",        0x1CB9C, 20, SONY_REPEAT_FRAMES, "STOP (0x1CB9C 20b)" },
+    { "prev",        0x0CB9C, 20, SONY_REPEAT_FRAMES, "PREV (0x0CB9C 20b)" },
+    { "next",        0x8CB9C, 20, SONY_REPEAT_FRAMES, "NEXT (0x8CB9C 20b)" },
+    { "disc_skip",   0x7CB9C, 20, SONY_REPEAT_FRAMES, "DISC SKIP (0x7CB9C 20b)" },
+
+    /* Utilitario de teste visual do LED IR pela camera do celular */
+    { "cam_test",    0xFFF,   12, 35,                 "CAMERA IR TEST (1.5s)" },
 };
 
 static esp_err_t api_cmd_handler(httpd_req_t *req)
@@ -537,11 +568,259 @@ static esp_err_t ws_handler(httpd_req_t *req)
     return httpd_ws_send_frame(req, &resp_pkt);
 }
 
+/* =========================================================================
+ * ATUALIZACAO OTA VIA WEB COM PARTICAO DUPLA (ota_0 / ota_1) E FALLBACK
+ * - Valida cabecalho do .bin antes de gravar
+ * - No pos-boot em estado PENDING_VERIFY, so confirma a imagem depois que
+ *   Wi-Fi (IP obtido) + HTTP Server estiverem 100% operacionais!
+ * - Se nao conectar em ate 90s apos um OTA, executa rollback automatico!
+ * ========================================================================= */
+#define OTA_VERIFY_TIMEOUT_SEC  90
+#define OTA_RECV_BUF_SIZE       4096
+
+static volatile bool s_wifi_got_ip = false;
+static volatile bool s_webserver_ready = false;
+static volatile bool s_ota_in_progress = false;
+
+static void ota_reboot_task(void *arg)
+{
+    bool do_rollback = (arg != NULL);
+    vTaskDelay(pdMS_TO_TICKS(800));
+    if (do_rollback) {
+        ESP_LOGW(TAG, "OTA: Executando fallback/rollback para a particao anterior...");
+        esp_ota_mark_app_invalid_rollback_and_reboot();
+    }
+    ESP_LOGI(TAG, "OTA: Reiniciando ESP32 para carregar o novo firmware...");
+    esp_restart();
+    vTaskDelete(NULL);
+}
+
+static void ota_rollback_watchdog_task(void *arg)
+{
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    ESP_LOGW(TAG, "OTA: Particao '%s' em estado PENDING_VERIFY. Aguardando Wi-Fi + HTTP para confirmar...",
+             running ? running->label : "?");
+
+    const int max_ticks = OTA_VERIFY_TIMEOUT_SEC * 10;
+    for (int i = 0; i < max_ticks; i++) {
+        if (s_wifi_got_ip && s_webserver_ready) {
+            // Aguarda 2s extras de estabilidade apos obter IP e subir o servidor HTTP
+            vTaskDelay(pdMS_TO_TICKS(2000));
+            if (esp_ota_mark_app_valid_cancel_rollback() == ESP_OK) {
+                ESP_LOGI(TAG, "OTA: Auto-diagnostico APROVADO! Particao '%s' marcada como VALIDA (fallback cancelado).",
+                         running ? running->label : "?");
+            }
+            vTaskDelete(NULL);
+            return;
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    ESP_LOGE(TAG, "OTA: Falha no auto-diagnostico em %d s (sem Wi-Fi/HTTP)! Acionando FALLBACK automatico...",
+             OTA_VERIFY_TIMEOUT_SEC);
+    esp_ota_mark_app_invalid_rollback_and_reboot();
+    vTaskDelete(NULL);
+}
+
+static void ota_boot_check(void)
+{
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    const esp_partition_t *next = esp_ota_get_next_update_partition(NULL);
+    if (running) {
+        ESP_LOGI(TAG, "Particao ativa: '%s' @ 0x%lx (%lu KB) | Proxima OTA: '%s'",
+                 running->label, (unsigned long)running->address, (unsigned long)(running->size / 1024),
+                 next ? next->label : "N/A");
+
+        esp_ota_img_states_t ota_state;
+        if (esp_ota_get_state_partition(running, &ota_state) == ESP_OK) {
+            if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
+                xTaskCreate(ota_rollback_watchdog_task, "ota_wdg", 3072, NULL, 8, NULL);
+            } else {
+                ESP_LOGI(TAG, "Estado OTA da particao atual: %d (VALIDA)", (int)ota_state);
+            }
+        }
+    }
+}
+
+static const char *ota_state_to_str(esp_ota_img_states_t st)
+{
+    switch (st) {
+        case ESP_OTA_IMG_NEW:            return "NEW";
+        case ESP_OTA_IMG_PENDING_VERIFY: return "PENDING_VERIFY";
+        case ESP_OTA_IMG_VALID:          return "VALID";
+        case ESP_OTA_IMG_INVALID:        return "INVALID";
+        case ESP_OTA_IMG_ABORTED:        return "ABORTED";
+        default:                         return "FACTORY_BOOT";
+    }
+}
+
+static esp_err_t api_ota_info_handler(httpd_req_t *req)
+{
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    const esp_partition_t *next = esp_ota_get_next_update_partition(NULL);
+    const esp_app_desc_t *desc = esp_app_get_description();
+
+    const char *state_str = "READY";
+    esp_ota_img_states_t st;
+    if (running && esp_ota_get_state_partition(running, &st) == ESP_OK) {
+        state_str = ota_state_to_str(st);
+    }
+
+    bool can_rb = esp_ota_check_rollback_is_possible();
+
+    char json[256];
+    snprintf(json, sizeof(json),
+             "{\"running\":\"%s\",\"addr\":\"0x%lx\",\"size_kb\":%lu,"
+             "\"next\":\"%s\",\"ver\":\"%s\",\"state\":\"%s\",\"can_rollback\":%s}",
+             running ? running->label : "unknown",
+             running ? (unsigned long)running->address : 0UL,
+             running ? (unsigned long)(running->size / 1024) : 0UL,
+             next ? next->label : "none",
+             desc ? desc->version : "1.0",
+             state_str,
+             can_rb ? "true" : "false");
+
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    return httpd_resp_sendstr(req, json);
+}
+
+static esp_err_t api_ota_upload_handler(httpd_req_t *req)
+{
+    if (s_ota_in_progress) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA ja em andamento");
+        return ESP_FAIL;
+    }
+
+    const esp_partition_t *update_part = esp_ota_get_next_update_partition(NULL);
+    if (!update_part) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Particao OTA nao encontrada (grave a tabela partitions.csv via USB uma vez)");
+        return ESP_FAIL;
+    }
+
+    if (req->content_len == 0 || req->content_len > update_part->size) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Tamanho do arquivo .bin invalido ou maior que a particao OTA");
+        return ESP_FAIL;
+    }
+
+    // Garante que a particao atual esteja confirmada antes de iniciar novo OTA
+    esp_ota_mark_app_valid_cancel_rollback();
+
+    char *buf = (char *)malloc(OTA_RECV_BUF_SIZE);
+    if (!buf) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Sem memoria RAM para buffer OTA");
+        return ESP_FAIL;
+    }
+
+    s_ota_in_progress = true;
+    esp_ota_handle_t ota_handle = 0;
+    bool ota_started = false;
+    size_t remaining = req->content_len;
+    size_t total_written = 0;
+
+    ESP_LOGI(TAG, "OTA: Iniciando upload de %u bytes para a particao '%s' (0x%lx)...",
+             (unsigned)req->content_len, update_part->label, (unsigned long)update_part->address);
+
+    while (remaining > 0) {
+        size_t to_read = (remaining > OTA_RECV_BUF_SIZE) ? OTA_RECV_BUF_SIZE : remaining;
+        int recv_len = httpd_req_recv(req, buf, to_read);
+        if (recv_len <= 0) {
+            if (recv_len == HTTPD_SOCK_ERR_TIMEOUT) {
+                continue;
+            }
+            ESP_LOGE(TAG, "OTA: Erro de rede na recepcao (recv=%d)", recv_len);
+            if (ota_started) esp_ota_abort(ota_handle);
+            free(buf);
+            s_ota_in_progress = false;
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Falha de conexao durante upload OTA");
+            return ESP_FAIL;
+        }
+
+        if (!ota_started) {
+            if ((uint8_t)buf[0] != ESP_IMAGE_HEADER_MAGIC) {
+                ESP_LOGE(TAG, "OTA: Arquivo invalido (magic byte 0x%02X != 0xE9)", (uint8_t)buf[0]);
+                free(buf);
+                s_ota_in_progress = false;
+                httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Arquivo invalido! Envie o binário compilado (sony_grx7_remote.bin)");
+                return ESP_FAIL;
+            }
+            esp_err_t err = esp_ota_begin(update_part, OTA_WITH_SEQUENTIAL_WRITES, &ota_handle);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "OTA: esp_ota_begin falhou (%s)", esp_err_to_name(err));
+                free(buf);
+                s_ota_in_progress = false;
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, esp_err_to_name(err));
+                return ESP_FAIL;
+            }
+            ota_started = true;
+        }
+
+        esp_err_t err = esp_ota_write(ota_handle, buf, (size_t)recv_len);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "OTA: esp_ota_write falhou (%s)", esp_err_to_name(err));
+            esp_ota_abort(ota_handle);
+            free(buf);
+            s_ota_in_progress = false;
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Erro ao gravar na Flash");
+            return ESP_FAIL;
+        }
+
+        remaining -= (size_t)recv_len;
+        total_written += (size_t)recv_len;
+    }
+
+    free(buf);
+
+    esp_err_t err = esp_ota_end(ota_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "OTA: Validacao da imagem falhou em esp_ota_end (%s)", esp_err_to_name(err));
+        s_ota_in_progress = false;
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Imagem corrompida ou assinatura invalida!");
+        return ESP_FAIL;
+    }
+
+    err = esp_ota_set_boot_partition(update_part);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "OTA: esp_ota_set_boot_partition falhou (%s)", esp_err_to_name(err));
+        s_ota_in_progress = false;
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Falha ao definir particao de boot");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "OTA: %u bytes gravados e verificados em '%s'! Agendando reboot...",
+             (unsigned)total_written, update_part->label);
+
+    char resp[128];
+    snprintf(resp, sizeof(resp), "{\"ok\":true,\"part\":\"%s\",\"bytes\":%u}",
+             update_part->label, (unsigned)total_written);
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    httpd_resp_sendstr(req, resp);
+
+    xTaskCreate(ota_reboot_task, "ota_reboot", 2048, NULL, 10, NULL);
+    return ESP_OK;
+}
+
+static esp_err_t api_ota_rollback_handler(httpd_req_t *req)
+{
+    if (!esp_ota_check_rollback_is_possible()) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Nenhuma particao anterior valida disponivel para fallback");
+        return ESP_FAIL;
+    }
+
+    httpd_resp_set_type(req, "application/json; charset=utf-8");
+    httpd_resp_sendstr(req, "{\"ok\":true,\"msg\":\"Revertendo para particao anterior...\"}");
+
+    xTaskCreate(ota_reboot_task, "ota_rb", 2048, (void *)1, 10, NULL);
+    return ESP_OK;
+}
+
 static void start_webserver(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.lru_purge_enable = true;
-    config.max_uri_handlers = 10;
+    config.max_uri_handlers = 14;
+    config.stack_size = 6144;
+    config.recv_wait_timeout = 15;
+    config.send_wait_timeout = 15;
 
     httpd_handle_t server = NULL;
     if (httpd_start(&server, &config) == ESP_OK) {
@@ -587,6 +866,24 @@ static void start_webserver(void)
             .handler   = api_sirc_handler,
             .user_ctx  = NULL
         };
+        const httpd_uri_t ota_info_uri = {
+            .uri       = "/api/ota/info",
+            .method    = HTTP_GET,
+            .handler   = api_ota_info_handler,
+            .user_ctx  = NULL
+        };
+        const httpd_uri_t ota_upload_uri = {
+            .uri       = "/api/ota",
+            .method    = HTTP_POST,
+            .handler   = api_ota_upload_handler,
+            .user_ctx  = NULL
+        };
+        const httpd_uri_t ota_rb_uri = {
+            .uri       = "/api/ota/rollback",
+            .method    = HTTP_POST,
+            .handler   = api_ota_rollback_handler,
+            .user_ctx  = NULL
+        };
         const httpd_uri_t ws_uri = {
             .uri          = "/ws",
             .method       = HTTP_GET,
@@ -602,9 +899,13 @@ static void start_webserver(void)
         httpd_register_uri_handler(server, &cmd_uri);
         httpd_register_uri_handler(server, &raw_uri);
         httpd_register_uri_handler(server, &sirc_uri);
+        httpd_register_uri_handler(server, &ota_info_uri);
+        httpd_register_uri_handler(server, &ota_upload_uri);
+        httpd_register_uri_handler(server, &ota_rb_uri);
         httpd_register_uri_handler(server, &ws_uri);
 
-        ESP_LOGI(TAG, "Webserver + WebSocket (/ws) iniciado na porta %d!", config.server_port);
+        s_webserver_ready = true;
+        ESP_LOGI(TAG, "Webserver + WebSocket (/ws) + OTA (/api/ota) iniciado na porta %d!", config.server_port);
     }
 }
 
@@ -661,6 +962,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         s_retry_count = 0;
+        s_wifi_got_ip = true;
         ESP_LOGI(TAG, "==========================================");
         ESP_LOGI(TAG, "CONECTADO na rede '%s'!", s_wifi_aps[s_current_ap_idx].ssid);
         ESP_LOGI(TAG, "Abra no navegador do celular:");
@@ -709,7 +1011,8 @@ void app_main(void)
 
     ir_rmt_init();
     s_ir_tx_queue = xQueueCreate(3, sizeof(ir_tx_msg_t));
-    xTaskCreate(ir_tx_task, "ir_tx_task", 3072, NULL, 10, NULL);
+    xTaskCreate(ir_tx_task, "ir_tx_task", 3072, NULL, 12, NULL);
+    ota_boot_check();
     wifi_init_sta();
     start_webserver();
 }

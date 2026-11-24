@@ -10,5 +10,9 @@ idf_component_register(
         esp_event
         esp_driver_rmt
         esp_driver_gpio
+        app_update
+        esp_app_format
+        esp_partition
+        esp_system
         log
 )
