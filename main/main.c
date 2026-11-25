@@ -385,40 +385,25 @@ typedef struct {
 } sony_key_map_t;
 
 static const sony_key_map_t s_key_table[] = {
-    /* Comandos 12-bit (Addr 0x10 = 16) - Confirmados funcionando no MHC-GRX7 Manaus */
-    { "power",       0xA81,   12, SONY_REPEAT_FRAMES, "POWER I/O" },
-    { "vol_up",      0x481,   12, SONY_REPEAT_FRAMES, "VOLUME +" },
-    { "vol_down",    0xC81,   12, SONY_REPEAT_FRAMES, "VOLUME -" },
-    { "display",     0xD21,   12, SONY_REPEAT_FRAMES, "DISPLAY" },
-    { "sleep",       0x061,   12, SONY_REPEAT_FRAMES, "SLEEP TIMER" },
-    { "mute",        0x281,   12, SONY_REPEAT_FRAMES, "MUTING" },
+    /* Comandos 12-bit (Addr 0x10 = Sony:16) - Confirmados no MHC-GRX7 Manaus */
+    { "power",       0xA81,   12, SONY_REPEAT_FRAMES, "POWER I/O" },     // Addr 0x10, Cmd 21 (Confirmado)
+    { "vol_up",      0x481,   12, SONY_REPEAT_FRAMES, "VOLUME +" },      // Addr 0x10, Cmd 18 (Confirmado)
+    { "vol_down",    0xC81,   12, SONY_REPEAT_FRAMES, "VOLUME -" },      // Addr 0x10, Cmd 19 (Confirmado)
+    { "display",     0xD21,   12, SONY_REPEAT_FRAMES, "DISPLAY" },       // Addr 0x10, Cmd 75 (Confirmado)
+    { "sleep",       0x061,   12, SONY_REPEAT_FRAMES, "SLEEP TIMER" },   // Addr 0x10, Cmd 96 (Confirmado)
+    { "mute",        0x281,   12, SONY_REPEAT_FRAMES, "MUTING" },        // Addr 0x10, Cmd 20
+    { "groove",      0x5E1,   12, SONY_REPEAT_FRAMES, "GROOVE" },        // Addr 0x10, Cmd 122 (Sony_cdcombo Sony:16)
 
-    /* Seletores de Fonte (FUNCTION 0x966 confirmado em 12-bit Addr 0x0C Cmd 105) */
-    { "function",    0x966,   12, SONY_REPEAT_FRAMES, "FUNCTION" },
-    { "cd",          0xA41,   12, SONY_REPEAT_FRAMES, "CD" },
-    { "tuner",       0xF01,   12, SONY_REPEAT_FRAMES, "TUNER / BAND" },
-    { "tape",        0xC41,   12, SONY_REPEAT_FRAMES, "TAPE A/B" },
-    { "md_video",    0x961,   12, SONY_REPEAT_FRAMES, "MD / VIDEO" },
-    { "md",          0x621,   12, SONY_REPEAT_FRAMES, "MD / DAT" },
-    { "video_aux",   0x441,   12, SONY_REPEAT_FRAMES, "VIDEO AUX" },
+    /* Seletores de Fonte (FUNCTION 0x966 confirmado em 12-bit Addr 0x0C + MD/VID em 0x10) */
+    { "function",    0x966,   12, SONY_REPEAT_FRAMES, "FUNCTION" },      // Addr 0x0C, Cmd 105 (Confirmado)
+    { "md_video",    0x961,   12, SONY_REPEAT_FRAMES, "MD / VIDEO" },    // Addr 0x10, Cmd 105
 
-    /* Processamento de Audio / DSP (12-bit Addr 0x0C) e DJ Effects (20-bit Addr 26.153) */
-    { "groove",      0x5E6,   12, SONY_REPEAT_FRAMES, "GROOVE" },        // Addr 0x0C, Cmd 122
-    { "dbfb",        0x8C6,   12, SONY_REPEAT_FRAMES, "DBFB BASS" },     // Addr 0x0C, Cmd 49 (Confirmado!)
-    { "eq",          0xF86,   12, SONY_REPEAT_FRAMES, "EQUALIZER" },     // Addr 0x0C, Cmd 31
-    { "pfile",       0xF66,   12, SONY_REPEAT_FRAMES, "P.FILE" },        // Addr 0x0C, Cmd 111
-    { "effect",      0x866,   12, SONY_REPEAT_FRAMES, "EFFECT" },        // Addr 0x0C, Cmd 97 (Confirmado!)
-    { "surround",    0xFC6,   12, SONY_REPEAT_FRAMES, "SURROUND" },      // Addr 0x0C, Cmd 63
-    { "loop",        0x1EB99, 20, SONY_REPEAT_FRAMES, "DJ LOOP" },       // Addr 26.153, Cmd 120 (20b)
-    { "flash",       0xEEB99, 20, SONY_REPEAT_FRAMES, "DJ FLASH" },      // Addr 26.153, Cmd 119 (20b Confirmado!)
-
-    /* Transporte CD / Tape (mantidos na API caso usados via URL/scanner) */
-    { "play",        0x4CB9C, 20, SONY_REPEAT_FRAMES, "PLAY" },
-    { "pause",       0x9CB9C, 20, SONY_REPEAT_FRAMES, "PAUSE" },
-    { "stop",        0x1CB9C, 20, SONY_REPEAT_FRAMES, "STOP" },
-    { "prev",        0x0CB9C, 20, SONY_REPEAT_FRAMES, "PREV" },
-    { "next",        0x8CB9C, 20, SONY_REPEAT_FRAMES, "NEXT" },
-    { "disc_skip",   0x7CB9C, 20, SONY_REPEAT_FRAMES, "DISC SKIP" },
+    /* Processamento de Audio / DSP (Addr 0x0C = Sony:12) e GEQ / P.FILE (Addr 0x12 = Sony:18) */
+    { "dbfb",        0x8C6,   12, SONY_REPEAT_FRAMES, "DBFB BASS" },     // Addr 0x0C, Cmd 49 (Confirmado)
+    { "effect",      0x146,   12, SONY_REPEAT_FRAMES, "EFFECT" },        // Addr 0x0C, Cmd 40 (Confirmado)
+    { "surround",    0xFC6,   12, SONY_REPEAT_FRAMES, "SURROUND" },      // Addr 0x0C, Cmd 63 (Confirmado)
+    { "pfile",       0x6C9,   12, SONY_REPEAT_FRAMES, "P.FILE" },        // Addr 0x12, Cmd 54 (Sony:18 File Select)
+    { "eq",          0x3E9,   12, SONY_REPEAT_FRAMES, "EQUALIZER" },     // Addr 0x12, Cmd 124 (Sony:18 Preset EQ)
 
     /* Utilitario de teste visual do LED IR pela camera do celular */
     { "cam_test",    0xFFF,   12, 35,                 "CAMERA IR TEST" },

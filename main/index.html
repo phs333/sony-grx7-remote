@@ -382,7 +382,7 @@
 
     .power-source-row {
       display: grid;
-      grid-template-columns: 98px 1fr;
+      grid-template-columns: 120px 1fr;
       gap: 12px;
       align-items: stretch;
     }
@@ -391,7 +391,7 @@
       background: #16171a;
       border: 1px solid #2b2e33;
       border-radius: 10px;
-      padding: 9px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -409,8 +409,8 @@
 
     .btn-power {
       width: 100%;
-      height: 48px;
-      border-radius: 24px;
+      height: 50px;
+      border-radius: 25px;
       background: var(--key-power);
       box-shadow:
         0 3px 0 #3a0808,
@@ -418,8 +418,8 @@
         inset 0 1px 0 rgba(255, 190, 190, 0.32);
       border: 1px solid #4a0a0a;
       flex-direction: row;
-      gap: 5px;
-      padding: 0 8px;
+      gap: 6px;
+      padding: 0 10px;
     }
 
     .btn-power:active {
@@ -430,15 +430,15 @@
     }
 
     .btn-power svg {
-      width: 13px;
-      height: 13px;
+      width: 14px;
+      height: 14px;
       stroke: #fff;
       stroke-width: 2.2;
       fill: none;
     }
 
     .btn-power .key-main {
-      font-size: 0.7rem;
+      font-size: 0.72rem;
       color: #fff;
       letter-spacing: 1.1px;
     }
@@ -446,29 +446,41 @@
     .btn-sleep {
       width: 100%;
       border-radius: 16px;
-      padding: 8px 6px;
+      padding: 9px 6px;
       background: linear-gradient(180deg, #32353a 0%, #202226 100%);
     }
 
     .btn-sleep .key-main {
-      font-size: 0.64rem;
+      font-size: 0.66rem;
       color: var(--silk-cyan);
     }
 
-    .source-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 10px;
+    .source-col {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 11px;
     }
 
-    .btn-func-wide {
-      grid-column: span 2;
+    .btn-source-main {
+      flex: 1;
       background: var(--key-metal);
       border-color: #141619;
+      padding: 14px 10px;
     }
 
-    .btn-func-wide .key-main {
+    .btn-source-main .key-main {
       color: #ffffff;
+      font-size: 0.8rem;
+      letter-spacing: 1.3px;
+    }
+
+    .btn-source-aux {
+      flex: 1;
+      padding: 13px 10px;
+    }
+
+    .btn-source-aux .key-main {
       font-size: 0.76rem;
       letter-spacing: 1.2px;
     }
@@ -504,19 +516,21 @@
     }
 
     .pill-btn {
-      border-radius: 18px;
-      padding: 11px 8px;
-      background: linear-gradient(180deg, #32353a 0%, #202226 100%);
+      flex: 1;
+      height: 100%;
+      border-radius: 10px;
+      padding: 14px 10px;
+      background: linear-gradient(180deg, #34383e 0%, #202226 100%);
     }
 
     .pill-btn .key-main {
-      font-size: 0.68rem;
-      letter-spacing: 1.2px;
+      font-size: 0.76rem;
+      letter-spacing: 1.3px;
     }
 
     .vol-section {
       display: grid;
-      grid-template-columns: 1fr 1.35fr;
+      grid-template-columns: 0.9fr 1.45fr;
       gap: 13px;
       align-items: stretch;
     }
@@ -524,8 +538,7 @@
     .util-col {
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      gap: 11px;
+      justify-content: stretch;
     }
 
     .vol-rocker-well {
@@ -712,28 +725,16 @@
         </button>
       </div>
 
-      <div class="source-grid">
-        <button class="hw-btn btn-func-wide" onclick="sendKey('function', 'FUNCTION')">
+      <div class="source-col">
+        <button class="hw-btn btn-source-main" onclick="sendKey('function', 'FUNCTION')">
           <span class="key-pip cyan"></span>
           <span class="key-main">FUNCTION</span>
           <span class="key-sub">Source Select</span>
         </button>
-        <button class="hw-btn" onclick="sendKey('md_video', 'MD / VIDEO')">
+        <button class="hw-btn btn-source-aux" onclick="sendKey('md_video', 'MD / VIDEO')">
           <span class="key-pip cyan"></span>
-          <span class="key-main">MD/VID</span>
-          <span class="key-sub">Aux In</span>
-        </button>
-        <button class="hw-btn" onclick="sendKey('cd', 'CD')">
-          <span class="key-main">CD</span>
-          <span class="key-sub">One Touch</span>
-        </button>
-        <button class="hw-btn" onclick="sendKey('tuner', 'TUNER / BAND')">
-          <span class="key-main">TUNER</span>
-          <span class="key-sub">FM / AM</span>
-        </button>
-        <button class="hw-btn" onclick="sendKey('tape', 'TAPE A/B')">
-          <span class="key-main">TAPE</span>
-          <span class="key-sub">Deck A/B</span>
+          <span class="key-main">MD / VIDEO</span>
+          <span class="key-sub">Aux Input</span>
         </button>
       </div>
     </div>
@@ -778,7 +779,7 @@
       </div>
     </div>
 
-    <!-- Controle de Volume (Rocker Tatil) + Display / Video Aux -->
+    <!-- Controle de Volume (Rocker Tatil) + Display -->
     <div class="bay">
       <div class="bay-header">
         <span class="bay-title">Master Volume &amp; Display</span>
@@ -787,12 +788,9 @@
       <div class="vol-section">
         <div class="util-col">
           <button class="hw-btn pill-btn" onclick="sendKey('display', 'DISPLAY')">
+            <span class="key-pip cyan"></span>
             <span class="key-main">DISPLAY</span>
             <span class="key-sub">VFD / Demo</span>
-          </button>
-          <button class="hw-btn pill-btn" onclick="sendKey('video_aux', 'VIDEO AUX')">
-            <span class="key-main">VIDEO AUX</span>
-            <span class="key-sub">RCA Input</span>
           </button>
         </div>
 
@@ -811,29 +809,30 @@
       </div>
     </div>
 
-    <!-- Scanner Tecnico Sony SIRC + Presets Confirmados 0x0C (12b) e 26.153 (20b) + Auto-Scan -->
+    <!-- Scanner Tecnico Sony SIRC + Presets 0x10 / 0x0C / 0x12 (GEQ) + Auto-Scan -->
     <details>
       <summary>SIRC Code Transmitter &amp; Auto-Scanner</summary>
       <div class="lab-row">
         <select id="presetSelect" onchange="applyPreset()">
-          <option value="">-- CODIGOS MHC-GRX7 (0x0C 12B / 26.153 20B) --</option>
-          <option value="0x966:12">FUNCTION [OK] (0x966 - Cmd 105 @ 0x0C)</option>
+          <option value="">-- TESTAR VARIANTES GROOVE / P.FILE / EQ --</option>
+          <option value="0x5E1:12">GROOVE (0x5E1 - Cmd 122 @ 0x10)</option>
+          <option value="0x6C9:12">P.FILE / File Select (0x6C9 - Cmd 54 @ 0x12)</option>
+          <option value="0x7E9:12">P.FILE User Alt (0x7E9 - Cmd 126 @ 0x12)</option>
+          <option value="0x3E9:12">PRESET EQ / File+ (0x3E9 - Cmd 124 @ 0x12)</option>
+          <option value="0xBE9:12">FILE SELECT - (0xBE9 - Cmd 125 @ 0x12)</option>
+          <option value="0x349:12">EQ ON/OFF @ 0x12 (0x349 - Cmd 44 @ 0x12)</option>
+          <option value="0x049:12">EQ BAND @ 0x12 (0x049 - Cmd 32 @ 0x12)</option>
+          <option value="0x3E6:12">EQ @ 0x0C (0x3E6 - Cmd 124 @ 0x0C)</option>
+          <option value="0x866:12">EQ CTRL OFF [OK] (0x866 - Cmd 97 @ 0x0C)</option>
+          <option value="0xEEB9C:20">EQ EDIT 20b (0xEEB9C - Cmd 119 @ 26.57)</option>
+          <option value="0x146:12">EFFECT [OK] (0x146 - Cmd 40 @ 0x0C)</option>
           <option value="0x8C6:12">DBFB [OK] (0x8C6 - Cmd 49 @ 0x0C)</option>
-          <option value="0x866:12">EFFECT / EQ OFF [OK] (0x866 - Cmd 97 @ 0x0C)</option>
-          <option value="0xEEB99:20">DJ FLASH [OK] (0xEEB99 - Cmd 119 @ 26.153)</option>
-          <option value="0x1EB99:20">DJ LOOP (0x1EB99 - Cmd 120 @ 26.153)</option>
-          <option value="0x5E6:12">GROOVE (0x5E6 - Cmd 122 @ 0x0C)</option>
-          <option value="0xF66:12">P.FILE (0xF66 - Cmd 111 @ 0x0C)</option>
-          <option value="0xFC6:12">SURROUND (0xFC6 - Cmd 63 @ 0x0C)</option>
-          <option value="0xF86:12">EQ ON/OFF (0xF86 - Cmd 31 @ 0x0C)</option>
-          <option value="0x086:12">EQ + (0x086 - Cmd 16 @ 0x0C)</option>
-          <option value="0x886:12">EQ - (0x886 - Cmd 17 @ 0x0C)</option>
-          <option value="0x146:12">EFFECT Alt (0x146 - Cmd 40 @ 0x0C)</option>
-          <option value="0x626:12">DSP Mode (0x626 - Cmd 70 @ 0x0C)</option>
+          <option value="0x966:12">FUNCTION [OK] (0x966 - Cmd 105 @ 0x0C)</option>
+          <option value="0xFC6:12">SURROUND [OK] (0xFC6 - Cmd 63 @ 0x0C)</option>
         </select>
       </div>
       <div class="lab-row">
-        <input id="hexInput" type="text" value="0x5E6" placeholder="Hex (0x5E6)">
+        <input id="hexInput" type="text" value="0x6C9" placeholder="Hex (0x6C9)">
         <select id="bitsInput" style="width:94px">
           <option value="12" selected>12-BIT</option>
           <option value="15">15-BIT</option>
@@ -844,14 +843,14 @@
       <div class="lab-row">
         <input id="cmdNum" type="number" min="0" max="127" value="0" style="width:74px" placeholder="Cmd">
         <select id="addrNum">
-          <option value="12" data-bits="12" selected>0x0C Audio/DSP GRX7 (12b)</option>
-          <option value="4922" data-bits="20">26.153 DJ/CD GRX7 (20b)</option>
-          <option value="16" data-bits="12">0x10 Amp/Power (12b)</option>
+          <option value="18" data-bits="12" selected>0x12 GEQ / P.File (12b)</option>
+          <option value="16" data-bits="12">0x10 Amp / Groove (12b)</option>
+          <option value="12" data-bits="12">0x0C DSP / Effect (12b)</option>
+          <option value="1850" data-bits="20">26.57 Menu / EQ Edit (20b)</option>
+          <option value="4922" data-bits="20">26.153 DJ / CD2 (20b)</option>
           <option value="13" data-bits="12">0x0D Tuner (12b)</option>
           <option value="17" data-bits="12">0x11 CD Mode 1 (12b)</option>
-          <option value="18" data-bits="12">0x12 GEQ (12b)</option>
-          <option value="1850" data-bits="20">26.57 Deck/Menu (20b)</option>
-          <option value="144" data-bits="15">0x90 Audio New (15b)</option>
+          <option value="144" data-bits="15">0x90 Audio 15b (15b)</option>
         </select>
       </div>
       <div class="lab-row">
