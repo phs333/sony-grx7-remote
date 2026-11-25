@@ -119,9 +119,8 @@ static void ir_rmt_init(void)
     };
     ESP_ERROR_CHECK(rmt_new_tx_channel(&tx_chan_cfg, &s_rmt_tx_chan));
 
-    // Usa drive padrao (GPIO_DRIVE_CAP_2 = 20mA, suficiente com sobra para os ~9.5mA do resistor de 220R)
-    // evitando bordas de chaveamento ultra-rapidas (harmônicos de RF/EMI no cabo de audio) do DRIVE_CAP_3
-    ESP_ERROR_CHECK(gpio_set_drive_capability(IR_TX_GPIO_NUM, GPIO_DRIVE_CAP_2));
+    // Drive suave (~10mA nominal, casado com os ~9.5mA do resistor de 220R) para minimizar harmonicos nas bordas
+    ESP_ERROR_CHECK(gpio_set_drive_capability(IR_TX_GPIO_NUM, GPIO_DRIVE_CAP_1));
 
     rmt_carrier_config_t carrier_cfg = {
         .duty_cycle = 0.33f, // Duty cycle oficial Sony SIRC (1/3 = 33%): mesmo alcance IR com 34% menos ripple na fonte!
@@ -197,7 +196,8 @@ static void sony_transmit_msb(uint32_t data, uint8_t nbits, int repeats)
         },
     };
 
-    ESP_LOGI(TAG, "TX Sony SIRC: data=0x%lX (%u bits) x%d [ativo=%lu us, gap=%u us, periodo=%lu us]",
+    // Usa LOGD para nao chavear a UART0/USB-Serial a cada clique de botao (reduz ruido na linha 5V/GND)
+    ESP_LOGD(TAG, "TX Sony SIRC: data=0x%lX (%u bits) x%d [ativo=%lu us, gap=%u us, periodo=%lu us]",
              (unsigned long)data, nbits, repeats,
              (unsigned long)frame_active_us, interframe_space_us,
              (unsigned long)(frame_active_us + interframe_space_us));
@@ -515,10 +515,11 @@ static esp_err_t ws_handler(httpd_req_t *req)
         for (size_t i = 0; i < sizeof(s_key_table) / sizeof(s_key_table[0]); i++) {
             if (strcmp(key, s_key_table[i].key) == 0) {
                 ir_enqueue_tx(s_key_table[i].data, s_key_table[i].nbits, s_key_table[i].repeats);
-                snprintf(resp, sizeof(resp), "OK // %s", s_key_table[i].desc);
                 break;
             }
         }
+        // Modo somente-escuta nos botoes normais: evita ligar o transmissor RF Wi-Fi para responder texto a cada clique!
+        return ESP_OK;
     } else if (strncmp(msg, "raw:", 4) == 0) {
         char copy[64];
         strncpy(copy, msg + 4, sizeof(copy) - 1);
@@ -532,7 +533,7 @@ static esp_err_t ws_handler(httpd_req_t *req)
         }
         uint32_t data = (uint32_t)strtoul(copy, NULL, 0);
         ir_enqueue_tx(data, nbits, SONY_REPEAT_FRAMES);
-        snprintf(resp, sizeof(resp), "RAW 0x%lX (%uB)", (unsigned long)data, nbits);
+        return ESP_OK;
     } else if (strncmp(msg, "sirc:", 5) == 0) {
         unsigned int cmd = 0, addr = 16, nbits = 12;
         if (sscanf(msg + 5, "%u:%u:%u", &cmd, &addr, &nbits) >= 2) {
@@ -931,6 +932,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        // Sobe temporariamente para 7 dBm apenas durante reconexao caso o sinal esteja fraco
+        esp_wifi_set_max_tx_power(28);
         s_retry_count++;
         if (s_retry_count < WIFI_MAX_RETRY_PER_AP) {
             ESP_LOGW(TAG, "Falha ao conectar em '%s' (tentativa %d/%d). Tentando novamente...",
@@ -948,8 +951,18 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         s_retry_count = 0;
         s_wifi_got_ip = true;
+
+        // Reduz potencia TX para o minimo absoluto do chip (8 = +2 dBm = 1.6 mW) se o sinal do roteador for bom (>= -76 dBm)
+        wifi_ap_record_t ap_info = {0};
+        int8_t target_pwr = 8; // +2 dBm (minimo absoluto do hardware ESP32)
+        if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK && ap_info.rssi < -76) {
+            target_pwr = 20;   // +5 dBm (3.1 mW) caso o roteador esteja muito distante
+        }
+        esp_wifi_set_max_tx_power(target_pwr);
+
         ESP_LOGI(TAG, "==========================================");
-        ESP_LOGI(TAG, "CONECTADO na rede '%s'!", s_wifi_aps[s_current_ap_idx].ssid);
+        ESP_LOGI(TAG, "CONECTADO na rede '%s' (RSSI %d dBm, TX cap=%d)!",
+                 s_wifi_aps[s_current_ap_idx].ssid, ap_info.rssi, (int)target_pwr);
         ESP_LOGI(TAG, "Abra no navegador do celular:");
         ESP_LOGI(TAG, "http://" IPSTR, IP2STR(&event->ip_info.ip));
         ESP_LOGI(TAG, "==========================================");
@@ -981,9 +994,8 @@ static void wifi_init_sta(void)
     wifi_apply_current_ap();
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    // Reduz potencia de pico de RF do Wi-Fi de +20 dBm (100 mW) para +13 dBm (20 mW = 52 * 0.25 dBm):
-    // corta em 80% a interferencia de RF induzida nos cabos RCA/pre-amp do som e os picos de corrente ao clicar!
-    esp_wifi_set_max_tx_power(52);
+    // Inicia associacao em +5 dBm (3 mW) e cai para +2 dBm (1.6 mW, minimo absoluto) assim que pega IP!
+    esp_wifi_set_max_tx_power(20);
 
     // Mantem recepcao continua (evita pulsos de 10 Hz de DTIM modem-sleep na fonte) e baixa latencia
     esp_wifi_set_ps(WIFI_PS_NONE);
