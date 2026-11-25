@@ -393,8 +393,8 @@ static const sony_key_map_t s_key_table[] = {
     { "sleep",       0x061,   12, SONY_REPEAT_FRAMES, "SLEEP TIMER" },
     { "mute",        0x281,   12, SONY_REPEAT_FRAMES, "MUTING" },
 
-    /* Seletores de Fonte Diretos e Ciclicos (15-bit Addr 0x90 + 12-bit Addr 0x10) */
-    { "function",    0x4B09,  15, SONY_REPEAT_FRAMES, "FUNCTION" },
+    /* Seletores de Fonte (FUNCTION 0x966 confirmado em 12-bit Addr 0x0C Cmd 105) */
+    { "function",    0x966,   12, SONY_REPEAT_FRAMES, "FUNCTION" },
     { "cd",          0xA41,   12, SONY_REPEAT_FRAMES, "CD" },
     { "tuner",       0xF01,   12, SONY_REPEAT_FRAMES, "TUNER / BAND" },
     { "tape",        0xC41,   12, SONY_REPEAT_FRAMES, "TAPE A/B" },
@@ -402,19 +402,15 @@ static const sony_key_map_t s_key_table[] = {
     { "md",          0x621,   12, SONY_REPEAT_FRAMES, "MD / DAT" },
     { "video_aux",   0x441,   12, SONY_REPEAT_FRAMES, "VIDEO AUX" },
 
-    /* Processamento de Audio, Graves, Equalizador e Efeitos DJ (15-bit / 12-bit / 20-bit) */
-    { "groove",      0x2F08,  15, SONY_REPEAT_FRAMES, "GROOVE" },
-    { "groove_12",   0x5E1,   12, SONY_REPEAT_FRAMES, "GROOVE" },
-    { "dbfb",        0x5909,  15, SONY_REPEAT_FRAMES, "DBFB BASS" },
-    { "dbfb_12",     0x8C6,   12, SONY_REPEAT_FRAMES, "DBFB BASS" },
-    { "eq",          0x6309,  15, SONY_REPEAT_FRAMES, "EQUALIZER" },
-    { "pfile",       0x3B09,  15, SONY_REPEAT_FRAMES, "P.FILE" },
-    { "effect",      0x1909,  15, SONY_REPEAT_FRAMES, "EFFECT" },
-    { "effect_12",   0x146,   12, SONY_REPEAT_FRAMES, "EFFECT" },
-    { "surround",    0x0109,  15, SONY_REPEAT_FRAMES, "SURROUND" },
-    { "surround_12", 0xFC6,   12, SONY_REPEAT_FRAMES, "SURROUND" },
-    { "loop",        0x1F1,   12, SONY_REPEAT_FRAMES, "DJ LOOP" },
-    { "flash",       0xEEB99, 20, SONY_REPEAT_FRAMES, "DJ FLASH" },
+    /* Processamento de Audio / DSP (12-bit Addr 0x0C) e DJ Effects (20-bit Addr 26.153) */
+    { "groove",      0x5E6,   12, SONY_REPEAT_FRAMES, "GROOVE" },        // Addr 0x0C, Cmd 122
+    { "dbfb",        0x8C6,   12, SONY_REPEAT_FRAMES, "DBFB BASS" },     // Addr 0x0C, Cmd 49 (Confirmado!)
+    { "eq",          0xF86,   12, SONY_REPEAT_FRAMES, "EQUALIZER" },     // Addr 0x0C, Cmd 31
+    { "pfile",       0xF66,   12, SONY_REPEAT_FRAMES, "P.FILE" },        // Addr 0x0C, Cmd 111
+    { "effect",      0x866,   12, SONY_REPEAT_FRAMES, "EFFECT" },        // Addr 0x0C, Cmd 97 (Confirmado!)
+    { "surround",    0xFC6,   12, SONY_REPEAT_FRAMES, "SURROUND" },      // Addr 0x0C, Cmd 63
+    { "loop",        0x1EB99, 20, SONY_REPEAT_FRAMES, "DJ LOOP" },       // Addr 26.153, Cmd 120 (20b)
+    { "flash",       0xEEB99, 20, SONY_REPEAT_FRAMES, "DJ FLASH" },      // Addr 26.153, Cmd 119 (20b Confirmado!)
 
     /* Transporte CD / Tape (mantidos na API caso usados via URL/scanner) */
     { "play",        0x4CB9C, 20, SONY_REPEAT_FRAMES, "PLAY" },
