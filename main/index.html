@@ -738,10 +738,10 @@
       </div>
     </div>
 
-    <!-- Processador Acustico, EQ e DJ Effects Sony GRX7 -->
+    <!-- Processador Acustico e Equalizador Sony GRX7 -->
     <div class="bay">
       <div class="bay-header">
-        <span class="bay-title">Sound Reinforcement &amp; DJ DSP</span>
+        <span class="bay-title">Sound Reinforcement &amp; Equalizer</span>
         <div class="bay-line"></div>
       </div>
       <div class="grid-2">
@@ -756,34 +756,24 @@
           <span class="key-sub">Dynamic Bass</span>
         </button>
       </div>
-      <div class="grid-3">
-        <button class="hw-btn" onclick="sendKey('eq', 'EQUALIZER')">
-          <span class="key-main">EQ</span>
-          <span class="key-sub">Band / Curve</span>
-        </button>
+      <div class="grid-2">
         <button class="hw-btn" onclick="sendKey('pfile', 'P.FILE')">
           <span class="key-main">P.FILE</span>
           <span class="key-sub">Personal File</span>
         </button>
+        <button class="hw-btn" onclick="sendKey('effect', 'EFFECT')">
+          <span class="key-main">EFFECT</span>
+          <span class="key-sub">EQ On / Off</span>
+        </button>
+      </div>
+      <div class="grid-2">
+        <button class="hw-btn" onclick="sendKey('eq', 'EQUALIZER')">
+          <span class="key-main">EQ</span>
+          <span class="key-sub">Band / Curve</span>
+        </button>
         <button class="hw-btn" onclick="sendKey('surround', 'SURROUND')">
           <span class="key-main">SURROUND</span>
           <span class="key-sub">Sound Field</span>
-        </button>
-      </div>
-      <div class="grid-3">
-        <button class="hw-btn" onclick="sendKey('effect', 'EFFECT')">
-          <span class="key-main">EFFECT</span>
-          <span class="key-sub">EQ On/Off</span>
-        </button>
-        <button class="hw-btn" id="btnLoop">
-          <span class="key-pip amber"></span>
-          <span class="key-main">LOOP</span>
-          <span class="key-sub">Hold Effect</span>
-        </button>
-        <button class="hw-btn" id="btnFlash">
-          <span class="key-pip amber"></span>
-          <span class="key-main">FLASH</span>
-          <span class="key-sub">Hold Strobe</span>
         </button>
       </div>
     </div>
@@ -1137,8 +1127,6 @@
 
     setupHoldButton('btnVolUp', 'vol_up', 'VOLUME +');
     setupHoldButton('btnVolDown', 'vol_down', 'VOLUME -');
-    setupHoldButton('btnLoop', 'loop', 'DJ LOOP');
-    setupHoldButton('btnFlash', 'flash', 'DJ FLASH');
 
     function toggleFullscreen() {
       if (!document.fullscreenElement) {
