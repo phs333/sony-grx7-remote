@@ -318,13 +318,13 @@ static const char MANIFEST_JSON[] =
 "  \"name\": \"Sony MHC-GRX7 Remote\",\n"
 "  \"short_name\": \"Sony GRX7\",\n"
 "  \"description\": \"Controle Remoto IR Wi-Fi Sony MHC-GRX7\",\n"
-"  \"start_url\": \"/\",\n"
+"  \"start_url\": \"/?app=1\",\n"
 "  \"scope\": \"/\",\n"
 "  \"display\": \"fullscreen\",\n"
 "  \"display_override\": [\"fullscreen\", \"standalone\"],\n"
 "  \"orientation\": \"portrait\",\n"
 "  \"background_color\": \"#0c0d0e\",\n"
-"  \"theme_color\": \"#1c1d1f\",\n"
+"  \"theme_color\": \"#0c0d0e\",\n"
 "  \"icons\": [\n"
 "    {\n"
 "      \"src\": \"/icon-192.png\",\n"
@@ -337,12 +337,6 @@ static const char MANIFEST_JSON[] =
 "      \"sizes\": \"512x512\",\n"
 "      \"type\": \"image/png\",\n"
 "      \"purpose\": \"any\"\n"
-"    },\n"
-"    {\n"
-"      \"src\": \"/icon-512.png\",\n"
-"      \"sizes\": \"512x512\",\n"
-"      \"type\": \"image/png\",\n"
-"      \"purpose\": \"maskable\"\n"
 "    }\n"
 "  ]\n"
 "}";
@@ -360,21 +354,9 @@ static const char ICON_SVG[] =
 "</svg>";
 
 static const char SW_JS[] =
-"const CACHE = 'grx7-pwa-v2';\n"
-"self.addEventListener('install', (e) => {\n"
-"  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.json', '/icon-192.png', '/icon-512.png'])));\n"
-"  self.skipWaiting();\n"
-"});\n"
+"self.addEventListener('install', () => self.skipWaiting());\n"
 "self.addEventListener('activate', (e) => {\n"
-"  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));\n"
-"});\n"
-"self.addEventListener('fetch', (e) => {\n"
-"  if (e.request.method !== 'GET' || e.request.url.includes('/api/') || e.request.url.includes('/ws')) return;\n"
-"  e.respondWith(fetch(e.request).then((r) => {\n"
-"    const copy = r.clone();\n"
-"    caches.open(CACHE).then((c) => c.put(e.request, copy));\n"
-"    return r;\n"
-"  }).catch(() => caches.match(e.request)));\n"
+"  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.map((k) => caches.delete(k)))).then(() => self.clients.claim()));\n"
 "});\n";
 
 static esp_err_t index_get_handler(httpd_req_t *req)
@@ -386,24 +368,28 @@ static esp_err_t index_get_handler(httpd_req_t *req)
 static esp_err_t manifest_get_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "application/manifest+json; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "public, max-age=86400");
     return httpd_resp_send(req, MANIFEST_JSON, HTTPD_RESP_USE_STRLEN);
 }
 
 static esp_err_t icon_get_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "image/svg+xml");
+    httpd_resp_set_hdr(req, "Cache-Control", "public, max-age=86400");
     return httpd_resp_send(req, ICON_SVG, HTTPD_RESP_USE_STRLEN);
 }
 
 static esp_err_t icon192_get_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "image/png");
+    httpd_resp_set_hdr(req, "Cache-Control", "public, max-age=86400");
     return httpd_resp_send(req, (const char *)ICON_192_PNG, sizeof(ICON_192_PNG));
 }
 
 static esp_err_t icon512_get_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "image/png");
+    httpd_resp_set_hdr(req, "Cache-Control", "public, max-age=86400");
     return httpd_resp_send(req, (const char *)ICON_512_PNG, sizeof(ICON_512_PNG));
 }
 
@@ -551,10 +537,10 @@ static esp_err_t ws_handler(httpd_req_t *req)
         for (size_t i = 0; i < sizeof(s_key_table) / sizeof(s_key_table[0]); i++) {
             if (strcmp(key, s_key_table[i].key) == 0) {
                 ir_enqueue_tx(s_key_table[i].data, s_key_table[i].nbits, s_key_table[i].repeats);
-                snprintf(resp, sizeof(resp), "OK // %s", s_key_table[i].desc);
                 break;
             }
         }
+        return ESP_OK;
     } else if (strncmp(msg, "raw:", 4) == 0) {
         char copy[64];
         strncpy(copy, msg + 4, sizeof(copy) - 1);
@@ -568,7 +554,7 @@ static esp_err_t ws_handler(httpd_req_t *req)
         }
         uint32_t data = (uint32_t)strtoul(copy, NULL, 0);
         ir_enqueue_tx(data, nbits, SONY_REPEAT_FRAMES);
-        snprintf(resp, sizeof(resp), "RAW 0x%lX (%uB)", (unsigned long)data, nbits);
+        return ESP_OK;
     } else if (strncmp(msg, "sirc:", 5) == 0) {
         unsigned int cmd = 0, addr = 16, nbits = 12;
         if (sscanf(msg + 5, "%u:%u:%u", &cmd, &addr, &nbits) >= 2) {
@@ -840,8 +826,8 @@ static void start_webserver(void)
     config.lru_purge_enable = true;
     config.max_uri_handlers = 16;
     config.stack_size = 6144;
-    config.recv_wait_timeout = 15;
-    config.send_wait_timeout = 15;
+    config.recv_wait_timeout = 5;
+    config.send_wait_timeout = 5;
 
     httpd_handle_t server = NULL;
     if (httpd_start(&server, &config) == ESP_OK) {
@@ -1031,9 +1017,8 @@ static void wifi_init_sta(void)
     wifi_apply_current_ap();
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    // Reduz potencia de pico de RF do Wi-Fi de +20 dBm (100 mW) para +13 dBm (20 mW = 52 * 0.25 dBm):
-    // corta em 80% a interferencia de RF induzida nos cabos RCA/pre-amp do som e os picos de corrente ao clicar!
-    esp_wifi_set_max_tx_power(52);
+    // +11 dBm (44 = 12.5 mW): 88% menos RF que os 100 mW padrao, sem perda de pacotes ao carregar a pagina!
+    esp_wifi_set_max_tx_power(44);
 
     // Mantem recepcao continua (evita pulsos de 10 Hz de DTIM modem-sleep na fonte) e baixa latencia
     esp_wifi_set_ps(WIFI_PS_NONE);

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" style="background:#0c0d0e;">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#1c1d1f">
+  <meta name="theme-color" content="#0c0d0e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -686,7 +686,6 @@
         <span class="model-tag">RM-SR5 // MHC-GRX7 </span>
       </div>
       <div class="top-controls">
-        <button id="btnInstall" class="btn-fs" style="display:none; color:#4effdf; border-color:rgba(78,255,223,0.45);" onclick="installPWA()">INSTALL APP</button>
         <button id="btnFullscreen" class="btn-fs" onclick="toggleFullscreen()" title="Alternar Tela Cheia">FULLSCREEN</button>
         <div class="ir-window" title="Transmissor Infravermelho 40kHz">
           <span>SIRC</span>
@@ -1139,34 +1138,14 @@
       }
     }
 
-    // Captura o prompt oficial de instalacao WebAPK do Chrome Android
-    let deferredInstallPrompt = null;
-    const btnInstall = document.getElementById('btnInstall');
-    const btnFullscreen = document.getElementById('btnFullscreen');
-
-    if (window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || window.navigator.standalone) {
-      btnFullscreen.style.display = 'none';
-    }
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredInstallPrompt = e;
-      btnInstall.style.display = 'inline-block';
-    });
-
-    window.addEventListener('appinstalled', () => {
-      deferredInstallPrompt = null;
-      btnInstall.style.display = 'none';
-    });
-
-    async function installPWA() {
-      if (!deferredInstallPrompt) return;
-      deferredInstallPrompt.prompt();
-      const { outcome } = await deferredInstallPrompt.userChoice;
-      if (outcome === 'accepted') {
-        btnInstall.style.display = 'none';
-      }
-      deferredInstallPrompt = null;
+    // Se aberto pelo icone da tela inicial (?app=1), oculta a barra automaticamente no 1o toque em qualquer botao
+    const isAppLaunch = location.search.includes('app=1');
+    if (isAppLaunch) {
+      document.addEventListener('pointerdown', () => {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => { });
+        }
+      }, { once: true });
     }
 
     loadOtaInfo();
