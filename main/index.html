@@ -10,8 +10,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Sony GRX7">
   <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
-  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon-192.png">
   <title>SONY RM-SR5 // MHC-GRX7</title>
   <style>
     :root {
@@ -685,7 +686,8 @@
         <span class="model-tag">RM-SR5 // MHC-GRX7 </span>
       </div>
       <div class="top-controls">
-        <button class="btn-fs" onclick="toggleFullscreen()" title="Alternar Tela Cheia">FULLSCREEN</button>
+        <button id="btnInstall" class="btn-fs" style="display:none; color:#4effdf; border-color:rgba(78,255,223,0.45);" onclick="installPWA()">INSTALL APP</button>
+        <button id="btnFullscreen" class="btn-fs" onclick="toggleFullscreen()" title="Alternar Tela Cheia">FULLSCREEN</button>
         <div class="ir-window" title="Transmissor Infravermelho 40kHz">
           <span>SIRC</span>
           <div id="led" class="ir-led"></div>
@@ -1135,6 +1137,36 @@
       } else if (document.exitFullscreen) {
         document.exitFullscreen();
       }
+    }
+
+    // Captura o prompt oficial de instalacao WebAPK do Chrome Android
+    let deferredInstallPrompt = null;
+    const btnInstall = document.getElementById('btnInstall');
+    const btnFullscreen = document.getElementById('btnFullscreen');
+
+    if (window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || window.navigator.standalone) {
+      btnFullscreen.style.display = 'none';
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      btnInstall.style.display = 'inline-block';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      btnInstall.style.display = 'none';
+    });
+
+    async function installPWA() {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === 'accepted') {
+        btnInstall.style.display = 'none';
+      }
+      deferredInstallPrompt = null;
     }
 
     loadOtaInfo();

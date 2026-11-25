@@ -16,6 +16,7 @@
 #include "esp_partition.h"
 #include "driver/gpio.h" // IWYU pragma: keep
 #include "driver/rmt_tx.h"
+#include "pwa_icons.h"
 
 static const char *TAG = "SONY_GRX7";
 
@@ -307,31 +308,41 @@ extern const char index_html_start[] asm("_binary_index_html_start");
 extern const char index_html_end[]   asm("_binary_index_html_end");
 
 /* =========================================================================
- * HANDLERS DO SERVIDOR HTTP + PWA (MANIFEST, ICONE SVG, SERVICE WORKER)
+ * HANDLERS DO SERVIDOR HTTP + PWA (MANIFEST, ICONES PNG/SVG, SERVICE WORKER)
+ * Chrome Android exige icones raster PNG 192x192 e 512x512 + fetch real no
+ * Service Worker para instalar como WebAPK real em tela cheia sem barra!
  * ========================================================================= */
 static const char MANIFEST_JSON[] =
 "{\n"
+"  \"id\": \"/\",\n"
 "  \"name\": \"Sony MHC-GRX7 Remote\",\n"
 "  \"short_name\": \"Sony GRX7\",\n"
 "  \"description\": \"Controle Remoto IR Wi-Fi Sony MHC-GRX7\",\n"
 "  \"start_url\": \"/\",\n"
 "  \"scope\": \"/\",\n"
-"  \"display\": \"standalone\",\n"
+"  \"display\": \"fullscreen\",\n"
 "  \"display_override\": [\"fullscreen\", \"standalone\"],\n"
 "  \"orientation\": \"portrait\",\n"
-"  \"background_color\": \"#0d0f12\",\n"
-"  \"theme_color\": \"#111318\",\n"
+"  \"background_color\": \"#0c0d0e\",\n"
+"  \"theme_color\": \"#1c1d1f\",\n"
 "  \"icons\": [\n"
 "    {\n"
-"      \"src\": \"/icon.svg\",\n"
-"      \"sizes\": \"any\",\n"
-"      \"type\": \"image/svg+xml\",\n"
-"      \"purpose\": \"any maskable\"\n"
+"      \"src\": \"/icon-192.png\",\n"
+"      \"sizes\": \"192x192\",\n"
+"      \"type\": \"image/png\",\n"
+"      \"purpose\": \"any\"\n"
 "    },\n"
 "    {\n"
-"      \"src\": \"/icon.svg\",\n"
-"      \"sizes\": \"192x192 512x512\",\n"
-"      \"type\": \"image/svg+xml\"\n"
+"      \"src\": \"/icon-512.png\",\n"
+"      \"sizes\": \"512x512\",\n"
+"      \"type\": \"image/png\",\n"
+"      \"purpose\": \"any\"\n"
+"    },\n"
+"    {\n"
+"      \"src\": \"/icon-512.png\",\n"
+"      \"sizes\": \"512x512\",\n"
+"      \"type\": \"image/png\",\n"
+"      \"purpose\": \"maskable\"\n"
 "    }\n"
 "  ]\n"
 "}";
@@ -349,9 +360,22 @@ static const char ICON_SVG[] =
 "</svg>";
 
 static const char SW_JS[] =
-"self.addEventListener('install', () => self.skipWaiting());\n"
-"self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));\n"
-"self.addEventListener('fetch', () => {});\n";
+"const CACHE = 'grx7-pwa-v2';\n"
+"self.addEventListener('install', (e) => {\n"
+"  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.json', '/icon-192.png', '/icon-512.png'])));\n"
+"  self.skipWaiting();\n"
+"});\n"
+"self.addEventListener('activate', (e) => {\n"
+"  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));\n"
+"});\n"
+"self.addEventListener('fetch', (e) => {\n"
+"  if (e.request.method !== 'GET' || e.request.url.includes('/api/') || e.request.url.includes('/ws')) return;\n"
+"  e.respondWith(fetch(e.request).then((r) => {\n"
+"    const copy = r.clone();\n"
+"    caches.open(CACHE).then((c) => c.put(e.request, copy));\n"
+"    return r;\n"
+"  }).catch(() => caches.match(e.request)));\n"
+"});\n";
 
 static esp_err_t index_get_handler(httpd_req_t *req)
 {
@@ -369,6 +393,18 @@ static esp_err_t icon_get_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "image/svg+xml");
     return httpd_resp_send(req, ICON_SVG, HTTPD_RESP_USE_STRLEN);
+}
+
+static esp_err_t icon192_get_handler(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, "image/png");
+    return httpd_resp_send(req, (const char *)ICON_192_PNG, sizeof(ICON_192_PNG));
+}
+
+static esp_err_t icon512_get_handler(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, "image/png");
+    return httpd_resp_send(req, (const char *)ICON_512_PNG, sizeof(ICON_512_PNG));
 }
 
 static esp_err_t sw_get_handler(httpd_req_t *req)
@@ -802,7 +838,7 @@ static void start_webserver(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.lru_purge_enable = true;
-    config.max_uri_handlers = 14;
+    config.max_uri_handlers = 16;
     config.stack_size = 6144;
     config.recv_wait_timeout = 15;
     config.send_wait_timeout = 15;
@@ -825,6 +861,18 @@ static void start_webserver(void)
             .uri       = "/icon.svg",
             .method    = HTTP_GET,
             .handler   = icon_get_handler,
+            .user_ctx  = NULL
+        };
+        const httpd_uri_t icon192_uri = {
+            .uri       = "/icon-192.png",
+            .method    = HTTP_GET,
+            .handler   = icon192_get_handler,
+            .user_ctx  = NULL
+        };
+        const httpd_uri_t icon512_uri = {
+            .uri       = "/icon-512.png",
+            .method    = HTTP_GET,
+            .handler   = icon512_get_handler,
             .user_ctx  = NULL
         };
         const httpd_uri_t sw_uri = {
@@ -880,6 +928,8 @@ static void start_webserver(void)
         httpd_register_uri_handler(server, &index_uri);
         httpd_register_uri_handler(server, &manifest_uri);
         httpd_register_uri_handler(server, &icon_uri);
+        httpd_register_uri_handler(server, &icon192_uri);
+        httpd_register_uri_handler(server, &icon512_uri);
         httpd_register_uri_handler(server, &sw_uri);
         httpd_register_uri_handler(server, &cmd_uri);
         httpd_register_uri_handler(server, &raw_uri);
