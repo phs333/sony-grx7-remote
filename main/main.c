@@ -119,11 +119,12 @@ static void ir_rmt_init(void)
     };
     ESP_ERROR_CHECK(rmt_new_tx_channel(&tx_chan_cfg, &s_rmt_tx_chan));
 
-    // Configura corrente maxima de saida no pad do ESP32 (GPIO_DRIVE_CAP_3 = ~40mA) para o LED TIL32
-    ESP_ERROR_CHECK(gpio_set_drive_capability(IR_TX_GPIO_NUM, GPIO_DRIVE_CAP_3));
+    // Usa drive padrao (GPIO_DRIVE_CAP_2 = 20mA, suficiente com sobra para os ~9.5mA do resistor de 220R)
+    // evitando bordas de chaveamento ultra-rapidas (harmônicos de RF/EMI no cabo de audio) do DRIVE_CAP_3
+    ESP_ERROR_CHECK(gpio_set_drive_capability(IR_TX_GPIO_NUM, GPIO_DRIVE_CAP_2));
 
     rmt_carrier_config_t carrier_cfg = {
-        .duty_cycle = 0.50f, // 50% duty cycle para maior potencia luminosa no LED IR
+        .duty_cycle = 0.33f, // Duty cycle oficial Sony SIRC (1/3 = 33%): mesmo alcance IR com 34% menos ripple na fonte!
         .frequency_hz = SONY_CARRIER_FREQ_HZ,
         .flags = {
             .polarity_active_low = false,
@@ -980,7 +981,11 @@ static void wifi_init_sta(void)
     wifi_apply_current_ap();
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    // Desativa economia de energia do Wi-Fi para resposta imediata ao toque no celular!
+    // Reduz potencia de pico de RF do Wi-Fi de +20 dBm (100 mW) para +13 dBm (20 mW = 52 * 0.25 dBm):
+    // corta em 80% a interferencia de RF induzida nos cabos RCA/pre-amp do som e os picos de corrente ao clicar!
+    esp_wifi_set_max_tx_power(52);
+
+    // Mantem recepcao continua (evita pulsos de 10 Hz de DTIM modem-sleep na fonte) e baixa latencia
     esp_wifi_set_ps(WIFI_PS_NONE);
 }
 
